@@ -1,0 +1,35 @@
+# 모바일/웹배포 폴더를 GitHub Pages로 배포한다.
+# 웹배포 폴더는 직접 고치지 말고 `python 모바일/웹배포_만들기.py`로 만든 뒤 main에 올린다.
+name: 모바일 작성기 배포
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "모바일/웹배포/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: 모바일/웹배포
+      - id: deployment
+        uses: actions/deploy-pages@v4

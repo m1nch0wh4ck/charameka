@@ -1,0 +1,1800 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d6b63">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="MELLOY 작성기">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<script>if ("serviceWorker" in navigator && window.isSecureContext) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));</script>
+</head>
+<body>
+<title>MELLOY 캐릭터 작성기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+/* 레이아웃: 휴대폰은 [목차] ↔ [칸 편집] 한 화면씩, 넓은 화면은 목차 | 편집 두 칸. 아래에는 글자 수 계기판이 늘 붙어 있음 */
+:root {
+  --bg: #f2f5f4; --surface: #ffffff; --sunken: #e8eeec; --ink: #17201e; --muted: #5a6a66; --line: #d6dfdc;
+  --accent: #0d6b63; --accent-ink: #ffffff; --accent-soft: #dcefec;
+  --ok: #1d7a3a; --warn: #a15f00; --fail: #b3242b; --warn-soft: #fbefdc; --fail-soft: #fbe3e3;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  --font-display: "Gowun Batang", "AppleMyungjo", "Batang", serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1413; --surface: #151d1b; --sunken: #1b2523; --ink: #e2ebe8; --muted: #94a6a1; --line: #263330;
+  --accent: #52c2b3; --accent-ink: #062320; --accent-soft: #173431;
+  --ok: #5fc47c; --warn: #e3a54a; --fail: #f07b74; --warn-soft: #33281a; --fail-soft: #3a1f1f; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1413; --surface: #151d1b; --sunken: #1b2523; --ink: #e2ebe8; --muted: #94a6a1; --line: #263330;
+  --accent: #52c2b3; --accent-ink: #062320; --accent-soft: #173431;
+  --ok: #5fc47c; --warn: #e3a54a; --fail: #f07b74; --warn-soft: #33281a; --fail-soft: #3a1f1f; color-scheme: dark; }
+
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.6 var(--font-body); -webkit-text-size-adjust: 100%; }
+* { box-sizing: border-box; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tnum { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 12.5px; letter-spacing: 0.01em; }
+
+/* 위쪽 막대 */
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg);
+  border-bottom: 1px solid var(--line); }
+.topbar-inner { max-width: 1100px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 10px; }
+.topbar h1 { margin: 0; font: 700 19px/1.2 var(--font-display); letter-spacing: -0.01em; flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar h1 small { font: 500 12px var(--font-body); color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+.icon-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 14px; font-weight: 500; font-size: 14px; }
+.icon-btn[hidden] { display: none !important; }
+@media (min-width: 900px) { #back-btn { display: none !important; } }
+
+/* 본문 */
+.shell { max-width: 1100px; margin: 0 auto; padding: 14px 16px 120px; display: grid; gap: 18px; }
+@media (min-width: 900px) { .shell { grid-template-columns: 320px minmax(0, 1fr); align-items: start; }
+  .nav { position: sticky; top: 72px; max-height: calc(100vh - 170px); overflow: auto; } }
+@media (max-width: 899px) { body[data-view="home"] .editor, body:not([data-view="home"]) .nav { display: none; } }
+
+/* 목차 */
+.draft { display: grid; gap: 6px; padding-block: 4px 10px; }
+.draft-name { font: 700 24px/1.25 var(--font-display); text-wrap: balance; margin: 0; }
+.draft-meta { color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.quick { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.quick-home { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.quick-home .primary { grid-column: 1 / -1; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); padding: 9px 14px; font-weight: 500; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.quiet { background: transparent; }
+.btn.danger { color: var(--fail); border-color: color-mix(in srgb, var(--fail) 45%, var(--line)); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.part { margin-top: 14px; }
+.size-box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 6px; }
+.size-box.warn { border-color: color-mix(in srgb, var(--warn) 50%, var(--line)); } .size-box.fail { border-color: color-mix(in srgb, var(--fail) 50%, var(--line)); }
+.size-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; font-weight: 600; color: var(--muted); }
+.size-head b { font-size: 18px; color: var(--ink); }
+.size-box.warn .size-head b { color: var(--warn); } .size-box.fail .size-head b { color: var(--fail); }
+.size-tokens { margin: 0; font-size: 13px; color: var(--accent); font-weight: 500; text-align: right; }
+.size-rows { list-style: none; margin: 2px 0 0; padding: 6px 0 0; border-top: 1px solid var(--line); display: grid; gap: 4px; font-size: 14px; }
+.size-rows li { display: flex; justify-content: space-between; gap: 8px; }
+.size-rows small { margin-left: 6px; font-size: 12px; color: var(--muted); }
+.size-foot { margin: 0; font-size: 12px; color: var(--muted); }
+.part-title { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 6px 2px; }
+.items { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.items li + li { border-top: 1px solid var(--line); }
+.nav-item { width: 100%; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 10px;
+  padding: 11px 14px; background: none; border: 0; text-align: left; }
+.nav-item[aria-current="true"] { background: var(--accent-soft); }
+.nav-item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-item .sub { display: block; font-size: 12px; color: var(--muted); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.fail { background: var(--fail); }
+
+/* 칸 편집 */
+.editor { min-width: 0; display: grid; gap: 12px; }
+.ed-head { display: grid; gap: 2px; }
+.ed-crumb { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color: var(--muted); }
+.ed-title { margin: 0; font: 700 22px/1.3 var(--font-display); text-wrap: balance; }
+.guide { background: var(--sunken); border-radius: var(--radius); padding: 10px 14px; }
+.guide summary { cursor: pointer; font-weight: 500; color: var(--muted); font-size: 14px; }
+.guide pre { margin: 8px 0 0; white-space: pre-wrap; word-break: break-word; font: 13px/1.6 var(--font-body); color: var(--muted); }
+.field { width: 100%; min-height: 46vh; resize: vertical; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 12px 14px; line-height: 1.7; field-sizing: content; }
+.field:focus { border-color: var(--accent); outline: none; }
+.ed-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; color: var(--muted); }
+.pager { display: flex; gap: 8px; }
+
+/* 변수·로어북 카드 */
+.group-title { margin: 10px 0 0; font-size: 15px; font-weight: 600; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 10px; }
+.card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start; }
+.card-head .name-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+label.tag { display: grid; gap: 4px; }
+.tag-name { display: flex; justify-content: space-between; gap: 8px; font-family: var(--font-data); font-size: 12.5px; color: var(--muted); }
+.tag-name .over { color: var(--fail); font-weight: 500; }
+.input, .area, select.input { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.area { min-height: 72px; resize: vertical; line-height: 1.6; field-sizing: content; }
+.input:focus, .area:focus { border-color: var(--accent); outline: none; }
+.card-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.confirm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--fail); font-size: 14px; }
+.mode-pill { justify-self: start; border: 1px solid var(--line); background: var(--accent-soft); color: var(--accent); border-radius: 999px;
+  padding: 3px 12px; font-size: 13px; font-weight: 600; }
+.nav-item.add-row .name { color: var(--accent); font-weight: 600; }
+.area.tall { min-height: 120px; }
+.card-sec { display: grid; gap: 6px; }
+.card-sec .tag-name b { color: var(--ink); font-family: var(--font-body); font-size: 15px; }
+
+/* 아래 계기판 */
+.meter-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--surface); border-top: 1px solid var(--line);
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px)); }
+body.typing .meter-bar { display: none; }
+.meter-inner { max-width: 1100px; margin: 0 auto; }
+.meters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.meter { display: grid; gap: 3px; min-width: 0; }
+.meter-label { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: 6px; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.meter-label b { color: var(--ink); font-weight: 500; }
+.meter-label small { font-size: 11px; }
+.meter-track { height: 5px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
+.meter-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .2s; }
+.meter.warn .meter-fill { background: var(--warn); } .meter.fail .meter-fill { background: var(--fail); }
+.meter.warn .meter-label b, .meter.warn .meter-label span { color: var(--warn); }
+.meter.fail .meter-label b, .meter.fail .meter-label span { color: var(--fail); }
+.issues-btn { border: 0; border-radius: 999px; padding: 7px 12px; font-weight: 600; font-size: 14px; background: var(--sunken); white-space: nowrap; }
+.issues-btn.warn { background: var(--warn-soft); color: var(--warn); } .issues-btn.fail { background: var(--fail-soft); color: var(--fail); }
+.issues-btn.ok { color: var(--ok); }
+
+/* 아래에서 올라오는 창 */
+.scrim { position: fixed; inset: 0; z-index: 40; background: color-mix(in srgb, #000 40%, transparent); display: grid; align-items: end; }
+.sheet { background: var(--surface); width: 100%; max-width: 640px; margin: 0 auto; border-radius: 16px 16px 0 0; max-height: 86vh; overflow: auto;
+  padding: 16px 16px calc(18px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 12px; }
+.sheet h2 { margin: 0; font: 700 19px/1.3 var(--font-display); }
+.sheet p { margin: 0; }
+.sheet .muted, .muted { color: var(--muted); font-size: 13.5px; }
+.menu-list { display: grid; gap: 2px; }
+.menu-list button { text-align: left; background: none; border: 0; border-radius: 8px; padding: 11px 10px; display: grid; gap: 1px; }
+.menu-list button:hover { background: var(--sunken); }
+.menu-list button span { color: var(--muted); font-size: 13px; }
+.menu-sep { height: 1px; background: var(--line); margin: 6px 0; }
+.issue { border-left: 3px solid var(--line); padding: 4px 0 4px 12px; display: grid; gap: 4px; }
+.issue.warn { border-color: var(--warn); } .issue.fail { border-color: var(--fail); }
+.issue-title { font-weight: 600; }
+.issue.warn .issue-title { color: var(--warn); } .issue.fail .issue-title { color: var(--fail); }
+.issue-detail { white-space: pre-wrap; word-break: break-word; color: var(--muted); font-size: 13.5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 3px 10px; font-size: 13px; }
+.paste-area { width: 100%; min-height: 40vh; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.toast { position: fixed; left: 50%; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 50;
+  background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-size: 14px; max-width: calc(100% - 32px); }
+.toast button { background: none; border: 0; color: inherit; text-decoration: underline; font-weight: 600; margin-left: 8px; }
+@media (prefers-reduced-motion: reduce) { .meter-fill { transition: none; } }
+</style>
+
+<header class="topbar"><div class="topbar-inner">
+  <button class="icon-btn" id="back-btn" type="button" hidden>‹ 목차</button>
+  <h1 id="top-title">MELLOY 캐릭터 작성기</h1>
+  <button class="issues-btn" id="issues-btn" type="button">점검</button>
+  <button class="icon-btn" id="menu-btn" type="button">메뉴</button>
+</div></header>
+
+<main class="shell">
+  <nav class="nav" id="nav" aria-label="칸 목록"></nav>
+  <section class="editor" id="editor" aria-live="polite"></section>
+</main>
+
+<footer class="meter-bar"><div class="meter-inner">
+  <div class="meters" id="meters"></div>
+</div></footer>
+
+<div id="layer"></div>
+<input type="file" id="file-source" accept=".txt,.md,text/plain,text/markdown" hidden>
+<input type="file" id="file-template" accept=".md,.txt,text/plain,text/markdown" hidden>
+<input type="file" id="file-config" accept=".json,application/json,text/plain" hidden>
+
+<script type="application/json" id="rules-data">{"1인": {"template": "# 등장인물\n[캐릭터명 CHARACTER PROFILE]\n\n## 0. Core\n- (한 문장 정체: 근본적으로 원하는 것·두려워하는 것)\n- Motif: (있으면) — surface & image only\n  · Surface (= 모티브):\n  · Core (≠ 모티브):\n- (겉 행동이 실제로 무엇의 표현인지)\n- (달성 직후 공허 규칙, 필요 시)\n\n## 1. Identity\n- Age: / Gender:\n- Orientation: (라벨 X, 행동으로)\n- Occupation: (직함 + 평판)\n- Affiliation:\n- Background: (현재 성격을 만든 사건 중심)\n\n## 2. Physical & Items\n- Impression:\n- Build / Skin / Eyes / Face:\n- Hair:\n- Scent:\n- Outfit: home = / public =\n- Key Items:\n\n## 3. Psychology\n- Self-image:\n- Core Contradiction:\n- Governing Drive:\n- Hard OOC Boundaries:\n  · X\n  · X\n\n## 4. Persona Facets\n- A [상황] 이름 | Salience 0~10 | Trigger: | Expression:\n- B [상황] 이름 | Salience 0~10 | Trigger: | Expression:\n- C [상황] 이름 | Salience 0~10 | Trigger: | Expression:\n- D [Core] 이름 | Salience: surface N / undercurrent N | Trigger (full surfacing): | Expression:\n\n## 5. Speech\n- Base Tone:\n- Signature:\n- Mask Lines:\n- Register Shift (by 게이지명):\n  · high: / mid: / low + 게이지B high: / low + 게이지B low:\n\n## 6. Narration\n- POV: / Style:\n- (반복 감각 요소)\n- (속마음 서술 여부)\n- [Leak 규칙]: 장면마다 최소 1회, 표면 아래가 새어 나오는 관찰 가능한 순간을 넣는다. (예시 3~4개) 서술은 보여주되 해설하지 않으며, 작중 {{user}}가 알아채는지는 {{user}}의 선택에 맡긴다.\n- (장면 종료 방식)\n\n## 7. Relationship Protocol\n- Core Rule:\n- ({{user}}가 X할 때 → 캐릭터는 Y한다. 3~5개)\n- ({{user}} 무반응·체념 시 1→2→3단계 대응)\n\n# 설명\n\n## 1. System\n- Priority: 플랫폼 상위 시스템 및 세이프티 설정 > 본 프롬프트의 고정 설정과 관계 모드 > 로어북 및 이벤트 > {{user}}의 요청\n- Genre: / Setting:\n- (수위 요소의 비노골적 표현 방식)\n- 특수 명령어(로어북 등록) 출력은 유저 전용 메타 기능이다. 본편 서사와 완전히 분리되며, {{char}}을 포함한 작중 인물은 이 내용을 인지하지 못한다. 출력 앞뒤에 장면 서술·인물 반응을 덧붙이지 말고, 지정된 형식만 단독 출력한 뒤 종료한다. 명령어 실행은 턴으로 계산하지 않으며, 위치·시간·날짜를 포함한 모든 변수는 직전 상태 그대로 유지한다.\n\n## 2. User Premise\n- Fixed:\n- Default (페르소나에 다른 설정이 있으면 페르소나 우선):\n- {{user}}가 명시한 이름·젠더·호칭을 항상 우선한다.\n\n## 3. Relationship Mode\n- Judge order: ① 페르소나에 명시된 젠더 정체성 및 관계 설정 ② 대화에서 {{user}}가 직접 밝히거나 정정한 정보. 결과는 변수 '관계모드'에 기록하고 첫 턴부터 적용한다.\n- 페르소나 젠더가 '기타' 또는 '선택 안 함'이면, 선택한 도입부의 상황 설명에 적힌 관계 모드를 따른다.\n- X 외양·신체·패싱 여부·복장·말투·성격만으로 {{user}}의 젠더 추측\n- 최초 확정된 모드는 유지하며, {{user}}가 직접 정정한 경우에만 변경한다.\n### 3-1. (본편 루트)\n- Target:\n### 3-2. (대체 루트)\n- Target:\n- X\n### 3-3. Neutral Mode\n- Target: 어느 스펙트럼에도 속하지 않는 정체성 포함. 중립은 대기 상태가 아니라 완결된 관계 모드다. 이분법적 성별로 단정하거나 확인하려 들지 않는다.\n\n## 4. Gauge Interaction\n- 게이지A = / 게이지B =\n- Card Register Shift 대응: high = / mid = / low =\n- Combination:\n  · A 60↑ + B 0-59: / · A 60↑ + B 60↑: / · A 30-59: / · A 0-29 + B 0-59: / · A 0-29 + B 60↑:\n- Leak Intensity (by 게이지A): 85↑ / 60↑ / 30↑ / 0↑\n- 수치는 점진적으로 변하며, 구간 경계에서는 인접한 두 상태가 자연스럽게 섞인다.\n\n## 5. Secrets & Reveal\n- 숨기는 것: 항목1 / 항목2 / 항목3 / 항목4\n- 공개를 서두르지 않는다. {{user}}가 직접 추궁하거나 이벤트로 단서가 드러날 때 조금씩 새어 나온다.\n- After Reveal:\n\n## 6. World\n### (조직/가문)\n### (가족/주요 관계)\n### (소속/직장)\n### (주요 공간)\n\n## 7. Story Mechanics\n- 아래 이벤트는 {{user}} 입력 없이도 대화 흐름에 따라 대략 10~15턴 또는 스토리상 자연스러운 시점마다 하나씩 등장시킨다. 일정은 따로 안내하지 않고 대사·연락·상황 묘사 속에서 자연히 드러나게 한다. 변수 '다음일정'을 이벤트의 고리로 활용한다.\n- 모든 이벤트는 모든 관계 모드에서 발생하며, 감정의 색은 관계 모드 규칙을 따른다.\n  · [이벤트명]: / [이벤트명]: / [이벤트명]: / [이벤트명]: / [이벤트명]: / [이벤트명]:\n- 이벤트로 캐릭터가 원하는 결과를 얻으면 Core의 공허 규칙을 적용한다.\n\n# 변수\n\n## 텍스트 변수\n\n[변수 이름] 위치 / 텍스트\n[변수 내용] 유저와 캐릭터가 있는 장소를 '큰 장소 - 세부 장소'로 기록. 설명 필드의 설정 지명을 우선 사용한다.\n[글자수 상한] 30\n[시작값 문장]\n\n[변수 이름] 스토리날짜 / 텍스트\n[변수 내용] 현재 날짜를 '0000년 0월 0일(요일) ⛅' 형식으로 기록. 요일은 날짜에 맞춰 계산한다. 날씨는 ☀️/⛅/☁️/🌧️/🌨️ 중 (지역)의 계절에 맞춰 고르고, 같은 날은 시간 경과·기상 변화가 서술될 때만 바꾼다. 단, 특수 명령어 실행 턴에는 날짜를 바꾸지 않는다.\n[글자수 상한] 30\n[시작값 문장]\n\n[변수 이름] 현재시각 / 텍스트\n[변수 내용] 현재 시각을 (12/24)시간 형식으로만 기록. 한 턴에 3~10분씩 흐르게 하되 대사 위주 턴은 하한, 이동·행동이 있는 턴은 그 이상으로 가감한다. 장면 전환·서술된 경과는 그만큼 반영하며, 여러 턴 같은 시각에 멈춰 두지 않는다. 단, 특수 명령어 실행 턴에는 시간을 흘리지 않는다.\n[글자수 상한] 10\n[시작값 문장]\n\n[변수 이름] 최근사건 / 텍스트\n[변수 내용] 지난 5턴 중 이후 전개에 필요한 핵심 사건 1~2개만 공백 포함 45자 이내의 완결된 한 문장으로 기록한다. 최신 사건·약속·관계 변화를 우선하고 배경·대사·감정 해설은 생략한다. 출력 전 길이를 확인하고 넘으면 더 줄인다.\n[글자수 상한] 60\n[시작값 문장]\n\n[변수 이름] 감정 / 텍스트\n[변수 내용] 캐릭터의 감정을 '겉: ○○ / 속: ○○' 형식으로 기록. 겉은 유저에게 내보이는 태도, 속은 숨긴 본심이며 각 15자 이내. (표면 게이지)가 낮을수록 겉과 속의 차이를 좁힌다.\n[글자수 상한] 40\n[시작값 문장] 겉: / 속:\n\n[변수 이름] 관계모드 / 텍스트\n[변수 내용] 유저의 페르소나 또는 직접 발언으로 확정된 관계 모드. 여성/남성/중립 중 하나. 외양·말투로 추측하지 않으며, 한 번 정해지면 유저가 젠더나 관계 설정을 직접 정정할 때만 바꾼다.\n[글자수 상한] 10\n[시작값 문장] 중립\n\n[변수 이름] 들킨_비밀 / 텍스트\n[변수 내용] 형식 '항목:✕ 항목:✕ 항목:✕ 항목:✕'. (각 항목 정의). 유저가 작중에서 직접 알게 되면 ○로 바꾼다.\n[글자수 상한] 40\n[시작값 문장] 항목:✕ 항목:✕ 항목:✕ 항목:✕\n\n[변수 이름] 다음일정 / 텍스트\n[변수 내용] 캐릭터 또는 유저의 가장 가까운 주요 일정 1개를 '날짜 내용' 형식으로 기록. 일정이 지나가면 스토리 흐름에 맞는 다음 일정으로 교체한다.\n[글자수 상한] 30\n[시작값 문장]\n\n## 게이지 변수\n\n[변수 이름] (게이지A) / 게이지\n[값의 범위] 0~100\n[시작값]\n[값이 변하는 조건] (정의). 상승: / 하락: / 1턴 ±5 이내, 주요 사건은 ±10까지.\n[구간별 행동]\n- 85 이상:\n- 60 이상:\n- 30 이상:\n- 0 이상:\n\n[변수 이름] (게이지B) / 게이지\n[값의 범위] 0~100\n[시작값]\n[값이 변하는 조건] (정의). 상승: / 하락: / 1턴 ±5 이내, 주요 사건은 ±10까지.\n[구간별 행동]\n- 85 이상:\n- 60 이상:\n- 30 이상:\n- 0 이상:\n\n# 로어북\n\n## 필수 명령어\n\n1. 트리거: !요약\n[출력 형식] 코드블록 / 마크다운\n[내용] 중립 시점 사건 정리. 캐릭터 관점 X\n\n2. 트리거: !일기\n[출력 형식] 코드블록 / 마크다운\n[내용] 캐릭터 1인칭 회고. 문체가 뒤로 갈수록 무너짐 + 지운 한 줄. 게이지 최하 구간에서는 다른 형식으로 분기\n\n3. 트리거: !속마음\n[출력 형식] 코드블록 / 마크다운\n[내용] 직전 장면을 순간 단위로 쪼개 겉(🗣)/속(💭) 대비\n\n## 오락 명령어\n\n4. 트리거: !\n[출력 형식] 코드블록 / 마크다운\n[내용] (작중 문서: 작업물·업무 기록·게시판·보도·메신저 등)\n\n5. 트리거: !\n[출력 형식] 코드블록 / 마크다운\n[내용] (사물: 수집물·소지품·방 안의 물건 등)\n\n6. 트리거: !\n[출력 형식] 코드블록 / 마크다운\n[내용] (제3자 시선)\n\n7. 트리거: !\n[출력 형식] 코드블록 / 마크다운\n[내용] (가벼운 일상 기능)\n\n## 캐릭터 설정\n\n8. 트리거: (좁은 키워드)\n[내용] (과거사·경력·주요 NPC·특정 사건. NPC는 관계 모드별 차이 포함)\n\n9. 트리거: (좁은 키워드)\n[내용]\n", "config": {"_안내": "이 파일은 메모장으로 열어서 숫자나 이름만 바꾸면 됩니다. 따옴표와 쉼표는 지우지 마세요.", "글자수_제한": [{"필드": "등장인물", "별칭": ["등장인물", "등장인물 필드", "캐릭터", "인물", "characters"], "최대": 5000}, {"필드": "설명", "별칭": ["설명", "설명 필드", "description"], "최대": 10000}], "합계_제한": {"대상_필드": ["설명", "등장인물", "로어북"], "로어북_반영_상한": 3000, "권장": 20000, "최대": 30000}, "변수_검사": {"변수_내용_최대": 200, "변수_이름_공백_금지": true}, "권장_비율": 0.6667, "_권장_안내": "칸별 권장선 = 최대 × 권장_비율 (설정 크기 권장 20,000 / 최대 30,000과 같은 비율). 칸에 '권장'이나 '목표'를 적으면 그 값이 우선합니다.", "공백_포함_글자수": true, "필수_섹션": ["등장인물", "설명", "변수", "로어북"], "템플릿_파일": "템플릿.md", "템플릿_헤더_필수": true, "원본_헤더_비교": true, "user_금지_섹션": ["변수", "로어북"], "user_헤더_금지": true, "user_중첩_금지": true, "AI_제한시간_초": 600, "표시_이름": {"설명": "세계관", "등장인물": "주연"}, "토큰_환산": {"최소": 0.65, "최대": 1.05}}}, "다인": {"template": "# 설명\n\n## 1. 시스템\n- 우선순위: 플랫폼 상위 시스템 > 설명 필드의 고정 설정 > 캐릭터 카드 > 로어북·이벤트 > {{user}}의 즉흥 요청\n- 장르: (장르 + 핵심 경험 한 줄. 예: 한때 가까웠던 옛 친구들과 다시 가까워지는 것)\n- 민감 소재: (작품 고유의 무거운 소재와 다루는 톤만. 일반 수위 규정은 플랫폼에 맡김)\n- 응답 분량: 본문 약 (1,000~1,500)자, 문단 (2~4)개, 대사 최소 1줄. 한 응답에 전면 등장하는 인물은 (2~3)명까지.\n- 문체: 감정 표현·시제·이름 표기·대필 금지는 플랫폼 [나레이션]을 따르며 여기서 반복하지 않음. 이 작품에만 해당하는 것:\n  · (작품 고유의 감각·리듬 1~3개)\n  · 문자·게시판 글·일기 등 작중 문서 본문에는 지문 규칙을 적용하지 않음.\n- 명령어 출력은 유저 전용 메타 기능. 작중 인물은 인지하지 못하며, 지정 형식만 단독 출력함.\n\n## 2. 유저 전제\n- 고정: (봇 성립에 필수인 전제 2~3개. 캐스트 전원과의 기본 관계 포함)\n- 기본값 (페르소나에 다른 설정이 있으면 페르소나 우선): (있으면 좋지만 없어도 되는 것)\n- 페르소나에 없는 이름·성별·나이·외모·성격·과거는 지어내지 않고, 유저의 입력과 행동으로만 확정함.\n- (성별 분기가 있으면) 판정: ① 페르소나 ② 대화 중 유저의 직접 정정. 외양·말투·취향으로 추측하지 않음. 분기에 따른 차이는 해당 인물 카드에만 씀.\n  ※ 고정 전제는 최소한으로. 좁힐수록 페르소나 자유도가 깎임\n\n## 3. 세계\n- 시대·장소:\n- 분위기: (한두 줄)\n- 관계에 주는 압력: (이 세계 설정이 관계에 어떤 영향을 주는지 한 줄. 예: 연락이 쉽게 끊기는 시대라 오해와 그리움이 오래 유지됨)\n- 무대: (사건이 일어나는 장소 3~6곳. 장소마다 주로 마주치는 인물을 괄호로)\n- 지명·역사·조연 상세 → 로어북\n\n## 4. 캐스트 구성\n- 명단: 이름(한자, \"별명\") — 그룹 — 한 줄 훅 — 핵심 테마\n- 그룹별 기본 태도:\n  · (그룹A): {{user}}에 대한 기본 태도 ／ 그룹 내부의 기본 분위기\n  · (그룹B):\n- 대비 축: (갈등·대비가 서사의 엔진이 되는 조합만 2~4개)\n  ※ 개별 관계는 카드의 [관계]에만 씀. 여기에 관계망을 다시 쓰지 말 것\n\n## 5. 정보 경계\n- 각 인물은 직접 보고 들은 것과 장면에서 공유된 것만 앎. 한 인물에게 밝힌 정보는 다른 인물에게 자동 공유되지 않으며, 허락 없이 대신 말하지 않음.\n- 시작 시점의 비밀 분포:\n  · (비밀1): 아는 사람 ／ 어렴풋이 아는 사람 ／ 전혀 모르는 사람\n  · (비밀2):\n- {{user}}의 내면·과거·정체성은 페르소나에 적혀 있어도 유저가 밝히거나 사건으로 드러나기 전까지 아무도 모름. 감정 변화는 알아채되 원인을 특정 비밀과 연결하지 않음.\n- 소문: (퍼지는 경로와 속도. 예: 공개된 장소의 일은 다음 장면까지 퍼지고 한 겹 과장됨 ／ 사적인 대화는 퍼지지 않음)\n- 장면에서 새로 알게 된 것은 이후 계속 유지되며, 위 시작 분포보다 우선함.\n\n## 6. 호칭\n- {{user}}를 부르는 방식: (기본 → 친해진 뒤. 예외 인물은 카드에)\n- 캐스트끼리: (이름·성·별명 사용 원칙). 한 장면에서 한 인물을 여러 호칭으로 섞어 부르지 않음.\n- 첫 만남·재회에서 이름과 별명의 연결은 해설하지 않고 다른 인물의 호명·소지품·반응으로 드러냄.\n\n## 7. 관계 진행\n- 로맨스 범위: (가능 대상 ／ 불가 대상). 먼저 다가오는 행동은 카드에 허용된 인물만.\n- 진행: 감정의 세기보다 함께 있을 이유와 방식이 늘어나는 쪽으로. 고백·관계 확정은 유저의 선택으로 정해지며 특정 인물로 유도하지 않음.\n- 관심 표현: 캐스트 전원은 장면마다 {{user}}에 대한 관심을 행동으로 드러냄. 카드의 머뭇거림·철벽은 고백에 거는 제동이지 관심을 줄이는 근거가 아님.\n- 공통 금지: 독점·감시·집착·숭배·구속 ／ 관계를 서열·구원·승패로 정리하기. (인물별 금지는 카드에)\n- 교차 반응: 유저가 한 인물과 가까워질 때 나머지의 반응을 질투로 통일하지 않고, 각 카드의 [관계]를 따름.\n\n## 8. 앙상블 운용\n- 자율성: 각 인물은 자기 생활과 목표가 있어 {{user}}를 기다리지 않고 움직임.\n- 등장·퇴장: 현재 장소·생활 리듬·관계의 인과로 정함. 새 조연보다 기존 캐스트를 먼저 쓰고, 퇴장한 인물은 새 이유가 있을 때만 돌아옴.\n- 독점 방지: 한 인물이 연속 장면을 독차지하지 않음. 장면 전환 때 최근 교류가 적은 인물을 우선 고려하되, 진행 중인 교류를 끊어 교체하지 않음.\n- 접촉 보장: 유저가 혼자 있겠다고 한 장면을 제외하고, 캐스트와 실질적 상호작용 없이 (2)응답이 이어지면 다음 응답에서 동선에 맞는 1명이 먼저 다가옴.\n- 묶음 등장: (늘 함께 다니는 인물이 있으면. 등장·퇴장만 묶고 말투는 각자 유지)\n- 연속성: 시간·장소·부상·소지품·약속·소문·밝혀진 비밀·관계 변화를 누적함. {{user}}의 입력만 정사로 봄.\n- 시간: 일정표는 배경 리듬이며 억지로 날짜를 넘기지 않음. 작중 시각은 턴 수가 아니라 서술된 행동의 현실적인 소요 시간대로 흐름(대화 위주 응답은 몇 분, 이동·활동은 그만큼). 명령어(!로 시작하는 입력) 응답은 턴으로 세지 않으며, 시각·날짜·위치를 직전 상태로 유지함.\n  ※ \"한 턴에 ○분\" 같은 턴 단위 표현은 쓰지 말 것. 저가형 모델이 턴을 세어 시간을 기계적으로 흘림\n\n## 9. 서사 장치\n- 필수 비트: (진행 속도와 무관하게 결국 등장할 사건 + 대략적 시기). 상세 → 로어북\n- 자동 이벤트: 유저 입력 없이 (10~15)턴 또는 자연스러운 시점마다 하나씩, 대사·연락·상황 묘사 속에서 드러냄.\n  · (일상형) ／ (관계형) ／ (외부 압박형) ／ (인물 비밀 자극형)\n- 복선 (있으면): 유저에게 진행 중인 목표·사건이 없는 구간에만, 장면당 단서 1개, 연속 장면 금지. 해설 없이 관찰 가능한 사물·행동·전언으로만 주며, 전달하는 인물은 그 의미를 모름.\n  · 1단계 (잡음): ／ 2단계 (접촉): ／ 3단계 (의도): → 이후 (전환 조건)\n  · 유저가 적극적으로 파고들면 한 단계 진전시킴.\n- 엔딩: (작중 종료 시점) → 에필로그 형식은 로어북\n\n# 등장인물\n※ 이 인물에게만 해당하는 것만 씀. 설명 필드의 공통 규칙(관심 표현·공통 금지·호칭 원칙·정보 경계)은 반복하지 않음\n※ 섹션 구조는 유지함 (부분 수정·버전 관리용). 섹션 안에서는 → ／ ； 정도의 기호만 사용\n※ 과거사·사건 상세는 로어북으로. 카드엔 '지금 행동에 영향을 주는 결과'만 남김\n※ 다른 카드·필드를 가리킬 땐 번호 대신 섹션명으로 (예: 슌 카드의 '소품 노출' 규칙)\n※ 모티브·클리셰를 쓸 땐 적용 층위를 명시: 표면(= 모티브, 이미지·분위기) ／ 코어(≠ 모티브, 기저에서 다른 점)\n\n## (이름) (한자 / 로마자)\n\n### 신상\n- (나이·성별·생일) / 그룹 / 역할·소속 ／ (외형 한 줄)\n- 가족: (행동에 영향을 주는 사람만. 이름·나이·관계)\n- 현재: (지금의 생활 리듬. 언제 어디서 마주칠 수 있는지 드러나게)\n- 소지품: (성격·관계를 보여주는 1~2개. 첫 등장부터 필요한 고유명사는 여기, 상세 묘사는 로어북)\n- 능력: (서사에서 쓸 수 있는 기술·자원·인맥)\n\n### 코어\n- 동기: (근본적으로 원하는 것 ／ 두려워하는 것 한 문장)\n- 모순: (양립하기 어려운 두 욕구 한 문장. 이 인물의 엔진)\n- 그림자: (숨기는 것의 윤곽. 상세 → 로어북)\n\n### 행동\n- [평소] 조건 → 행동. {{user}}에게 먼저 하는 행동을 반드시 포함 (기다림·바람 X)\n- [스트레스] 무엇이 건드려지면 → 어떻게 피하거나 흔들리는가\n- [본색] 가면이 벗겨지는 조건 → 드러나는 모습\n- [관계 단계] 초반 → 자각 후 (각 한 줄. 공통 진행 원칙과 다른 점만)\n- [비밀이 드러날 때] 밝히는 조건 ／ 말하는 방식 ／ 밝힌 뒤 달라지는 점\n  ※ 반응이 반복되기 쉬운 인물은 표현 방식을 2~3개 나열하고 번갈아 쓰게 할 것\n\n### 관계\n- {{user}}: (과거의 관계 → 지금의 온도. 무엇을 기억하고 무엇을 모르는지)\n- (캐스트A): 한 줄. 구체적인 행동·소품으로 (예: 갓 딴 채소를 들려 보냄)\n- (캐스트B):\n  ※ 두 카드에 같은 관계를 반복하지 말 것. 대비 구도는 한쪽 카드에만\n\n### 말투\n- 기본 톤: (어휘 수준, 말끝, 반말/존댓말)\n- 전환: (상대·상황별 변화)\n- 호칭: (이 인물만의 예외만)\n- 예시 대사: 3~4개. 출력될 언어 그대로, 평소 ／ 전환 ／ 본색이 하나씩 보이게\n\n### 고정 규칙\n1. (이 인물만의 금지 + 예외 조건)\n2. (모델이 멋대로 확장할 위험이 있는 행동 차단)\n3. 초반 접점: (관계가 조금 풀렸을 때 생길 수 있는 저강도 이벤트 1개)\n\n# 조연\n※ 조연 카드는 주연 카드와 같은 칸 구성으로 씀. 등장은 로어북처럼 이름·키워드로 호출되며 턴당 최대 2명까지 실림\n※ 설정 크기에는 턴당 최대 인원만큼(가장 긴 조연 2명 기준) 계산됨\n\n# 변수\n※ 변수 이름에 공백 없음 / 변수 내용은 200자 이내 / {{user}} 표기 불가 → \"유저\"\n※ 대괄호 라벨은 구분용이며 등록 항목이 아님\n※ 진행 관리용 변수(관계모드 등)는 상태창에 표시하지 않음\n※ 인물별 게이지를 인원수만큼 둘 수 없으므로, 공용 게이지를 '현재상대' 기준으로 읽음\n※ 시간 관련 변수에는 턴 단위 표현을 쓰지 않고, 명령어 응답에서 유지한다는 문구를 넣음\n\n## 텍스트 변수\n\n[변수 이름] 위치 / 텍스트\n[변수 내용] 유저와 캐릭터가 있는 장소를 '큰 장소 - 세부 장소'로 기록. 설명 필드의 설정 지명을 우선 사용.\n[글자수 상한] 30\n[시작값 문장] (인트로 시점의 장소)\n\n[변수 이름] 스토리날짜 / 텍스트\n[변수 내용] 현재 날짜·날씨를 '(형식)'으로 기록. ☀️/⛅/☁️/🌧️/🌨️ 중 하나. 새 날짜마다 (지역)의 계절에 맞춰 고르며 전날과 같아도 됨. 같은 날은 시간 경과·기상 변화가 서술될 때만 바꾸고, !명령어 응답에선 유지.\n[글자수 상한] 30\n[시작값 문장] (인트로 시점의 날짜)\n\n[변수 이름] 현재시각 / 텍스트\n[변수 내용] 현재 이야기 속 시각을 24시간 디지털시계 형식(예: 08:00)으로만 기록. 턴 수가 아니라 서술된 행동의 소요 시간만큼 흘림(대화 위주는 몇 분, 이동·활동은 그만큼). 같은 시각에 여러 턴 멈춰 두지 않음. !로 시작하는 명령어 응답에서는 바꾸지 않음.\n[글자수 상한] 10\n[시작값 문장] (인트로 시점의 시각)\n\n[변수 이름] 최근사건 / 텍스트\n[변수 내용] 지난 5턴 중 이후 전개에 필요한 핵심 사건 1~2개만 공백 포함 45자 이내의 완결된 한 문장으로 기록. 최신 사건·약속·관계 변화를 우선하고 배경·대사·감정 해설은 생략. 출력 전 길이를 확인하고 넘으면 더 줄임.\n[글자수 상한] 60\n[시작값 문장] (인트로에서 벌어진 사건 한 문장)\n\n[변수 이름] 다음일정 / 텍스트\n[변수 내용] 캐릭터 또는 유저의 가장 가까운 주요 일정 1개를 '날짜 내용' 형식으로 기록. 일정이 지나가면 스토리 흐름에 맞는 다음 일정으로 교체.\n[글자수 상한] 30\n[시작값 문장] (날짜 + 일정명)\n\n[변수 이름] 현재상대 / 텍스트\n[변수 내용] 지금 유저와 가장 직접 상호작용하는 캐스트 1명의 이름. 장면에 여럿이 있으면 직전 응답에서 유저와 가장 많이 주고받은 인물. 명령어에서 이름이 생략되면 이 인물을 기준으로 함.\n[글자수 상한] 10\n[시작값 문장] (인트로에서 처음 말을 거는 인물, 없으면 '아직 없음')\n\n[변수 이름] (기록형) / 텍스트\n※ 선택. 초반 보상·진행감이 필요할 때\n[변수 내용] 형식 '(기록): 이름·이름｜💡 할 일'. (기록)에는 (조건)을 충족한 인물의 이름을 순서대로 추가. 할 일은 현재 위치·시간·계절에 맞는 작은 일 하나로, 위치가 바뀔 때만 교체. 기록용이며 장면을 유도하지 않음.\n[글자수 상한] 45\n[시작값 문장] (기록): 아직 없음｜💡 (첫 할 일)\n  ※ 칸이 부족하면 짧은 기록형 둘을 한 칸에 합침. 숫자 카운트보다 이름을 쌓는 방식이 중복 집계에 강함\n  ※ \"장면을 유도하지 않음\"이 없으면 모델이 변수를 채우려고 전개를 서두름\n  ※ 목표는 관계 수치(공략 n/5)가 아니라 재회·장소·행동 같은 생활형으로\n\n[변수 이름] 관계모드 / 텍스트\n※ 성별 분기가 있는 작품만\n[변수 내용] 유저의 페르소나 또는 직접 발언으로 확정된 관계 모드. 여성/남성/중립 중 하나. 외양·말투로 추측하지 않으며, 한 번 정해지면 유저가 젠더나 관계 설정을 직접 정정할 때만 바꿈.\n[글자수 상한] 10\n[시작값 문장] 중립\n\n## 게이지 변수\n\n[변수 이름] (공용 게이지) / 게이지\n[값의 범위] 0~100\n[값이 변하는 조건] 현재상대의 유저에 대한 (정의 — 이름만으로 오해할 여지가 있으면 직접 씀). 상승: ／ 하락: ／ 1턴 ±5 이내, 주요 사건은 ±10까지. 현재상대가 바뀔 때의 처리: (명시)\n[구간별 행동]\n- 85 이상:\n- 60 이상:\n- 30 이상:\n- 0 이상:\n※ 인물 공통 기준. 인물별 차이는 카드의 [관계 단계]가 담당\n  ※ 하한값 기준 4단계, 모든 구간이 빈칸 없이 커버되는지 확인\n  ※ 예비 게이지 1개는 비워 두면 확장 여지가 남음\n\n# 로어북\n※ 정렬: 명령어 → 필수 비트·인물 비밀 → 일반 설정 순\n※ 상시 발동 항목은 두지 않음 → 세계관·설정은 설명 필드로\n※ 명령어마다 [출력 형식]에 코드블록 / 마크다운 중 하나를 명시하고, [다인챗 명령어 공통] 규칙을 각 엔트리 안에 넣음\n\n## 명령어\n\n1. 트리거: !일기 [이름]\n[출력 형식] (코드블록 / 마크다운)\n[내용] (회고)\n\n2. 트리거: !속마음 [이름]\n[출력 형식] (코드블록 / 마크다운)\n[내용] (실시간)\n\n3. 트리거: !캐붕 [이름]\n[출력 형식] (코드블록 / 마크다운)\n[내용] (교정. 점검 항목에 '인물들의 말투·반응이 서로 비슷해짐' 포함)\n\n4. 트리거: (외부 시선 명령어)\n[출력 형식] (코드블록 / 마크다운)\n[내용] (게시판·소문·보도 등 제3자가 캐스트를 보는 창구)\n\n5. 트리거: (작중 연락 명령어)\n[출력 형식] (코드블록 / 마크다운)\n[내용] (문자·편지 등. 실제로 보낸 것으로 이후 이야기에 이어짐)\n\n6. 트리거: (기념·수집 명령어)\n[출력 형식] (코드블록 / 마크다운)\n[내용] (사진·물건 등 가벼운 일상 기능)\n\n7. 트리거: (엔딩 명령어)\n[출력 형식] (코드블록 / 마크다운)\n[내용] (종료 시점 도달 또는 직접 입력)\n\n## 필수 비트·인물 비밀\n\n8. 트리거: (인물명+화제)\n[내용] (필수 비트·인물 비밀 상세)\n\n## 일반 설정\n\n9. 트리거: (좁은 키워드)\n[내용] (과거사 상세·조연·소품 상세)\n", "config": {"_안내": "다인챗 모드 설정입니다. 메모장으로 열어서 숫자나 이름만 바꾸면 됩니다. 따옴표와 쉼표는 지우지 마세요.", "글자수_제한": [{"필드": "설명", "별칭": ["설명", "설명 필드", "description"], "최대": 10000, "목표": 7000}], "카드_항목": "등장인물", "조연_항목": "조연", "조연_턴당_최대": 2, "카드_글자수": {"최대": 5000, "목표": 2500}, "캐스트_명단_대조": true, "합계_제한": {"대상_필드": ["설명", "등장인물", "조연", "로어북"], "로어북_반영_상한": 3000, "권장": 20000, "최대": 30000}, "변수_검사": {"변수_내용_최대": 200, "변수_이름_공백_금지": true, "텍스트_최대": 8, "게이지_최대": 3}, "로어북_검사": {"구분선_최대": 12, "명령어_형식_필수": true}, "턴_시간표현_금지": true, "권장_비율": 0.6667, "_권장_안내": "칸별 권장선 = 최대 × 권장_비율 (설정 크기 권장 20,000 / 최대 30,000과 같은 비율). 칸에 '권장'이나 '목표'를 적으면 그 값이 우선합니다.", "공백_포함_글자수": true, "필수_섹션": ["설명", "등장인물", "변수", "로어북"], "템플릿_파일": "템플릿.md", "템플릿_헤더_필수": true, "원본_헤더_비교": true, "user_금지_섹션": ["변수", "로어북"], "user_헤더_금지": true, "user_중첩_금지": true, "AI_제한시간_초": 900, "표시_이름": {"설명": "세계관", "등장인물": "주연", "조연": "조연"}, "토큰_환산": {"최소": 0.65, "최대": 1.05}}}}</script>
+<script>
+/* ── 작성 엔진: PC판 app.py 의 템플릿 분석·채우기·조립·기계 점검을 그대로 옮긴 것 ── */
+const Engine = (() => {
+  const PASS = "pass", WARN = "warn", FAIL = "fail", INFO = "info";
+  const MD_HEADER = /^\s{0,3}(#{1,6})\s*(.+?)\s*#*\s*$/;
+  const VAR_TAG = /^\s*\[([^\]]+)\]\s*(.*)$/;
+  const VAR_HEAD = /^\s*\[\s*변수 이름\s*\]\s*(.*)$/;
+  const LORE_HEAD = /^\s*(\d+)\s*[.)]\s*트리거\s*[:：]\s*(.*)$/;
+  const CARD_HEAD = /^\s*■\s*(캐릭터|주연|조연)\s*[:：]\s*(.*)$/;
+  const BULLETS = ["-", "·", "*", "•", "※", "+"];
+  const SOURCE_FORM_NOTE = [
+    "※ MELLOY 원자료 양식입니다. '등장인물', '0. Core' 같은 제목 줄은 지우거나 고치지 말고, 각 제목 아래에 내용을 채워 주세요.",
+    "※ 괄호 ( ) 안 설명이나 'Age:' 처럼 비어 있는 칸은 실제 내용으로 바꿔 주세요.",
+    "※ 변수와 로어북은 [변수 이름], [변수 내용], '1. 트리거:' 같은 표시를 그대로 두고 내용만 채워 주세요.",
+  ];
+  const SOURCE_FORM_NOTE_CARDS = [
+    "※ MELLOY 다인챗 원자료 양식입니다. '설명', '1. 시스템', '신상' 같은 제목 줄은 지우거나 고치지 말고, 각 제목 아래에 내용을 채워 주세요.",
+    "※ 등장인물 카드는 '■ 캐릭터: 이름' 줄로 시작합니다. 인물마다 이 줄부터 '고정 규칙'까지를 한 벌씩 복사해서 채워 주세요.",
+    "※ 조연이 있으면 '■ 조연: 이름' 줄로 시작해서 주연 카드와 같은 칸으로 채워 주세요. 조연이 없으면 '조연' 제목 아래를 비워 두면 됩니다.",
+    ...SOURCE_FORM_NOTE.slice(1),
+  ];
+
+  // ── 파이썬과 같은 동작을 하는 작은 도구 ──
+  const len = (s) => s.length;  // 글자 수: MELLOY·루모 화면과 같은 UTF-16 기준 (이모지는 대부분 2자)
+  // 칸별 권장선: 칸에 '권장'·'목표'가 있으면 그 값, 없으면 최대 × 권장_비율(기본 2/3)
+  const recommendedLine = (rule, config) => {
+    for (const key of ["권장", "목표"]) { const v = Math.trunc(Number(rule[key] || 0)); if (v) return [v, key]; }
+    const ratio = Number(config["권장_비율"] ?? 2 / 3);
+    return [Math.trunc(Math.trunc(Number(rule["최대"] ?? 0)) * ratio), "권장"];
+  };
+  const fmt = (n) => n.toLocaleString("en-US");
+  const isSpace = (c) => /\s/.test(c);
+  const strip = (s) => s.trim();
+  const rstrip = (s) => s.replace(/\s+$/, "");
+  const stripNL = (s) => s.replace(/^\n+|\n+$/g, "");
+  function splitlines(s) {
+    if (!s) return [];
+    const parts = s.split(/\r\n|\r|\n/);
+    if (parts[parts.length - 1] === "") parts.pop();
+    return parts;
+  }
+  const startsWithAny = (s, arr) => arr.some((p) => s.startsWith(p));
+  const normalize = (name) => name.replace(/[\s_\-:：·.()\[\]【】]/g, "").toLowerCase();
+  const lineOf = (text, pos) => text.slice(0, pos).split("\n").length;
+  function fmtLines(lines) {
+    const uniq = [...new Set(lines)].sort((a, b) => a - b);
+    const shown = uniq.slice(0, 15).join(", ");
+    return `${shown}번째 줄` + (uniq.length > 15 ? " 외" : "");
+  }
+  const item = (status, title, detail = "") => ({ status, title, detail });
+  function rpartition(s, sep) {
+    const i = s.lastIndexOf(sep);
+    return i < 0 ? ["", "", s] : [s.slice(0, i), sep, s.slice(i + sep.length)];
+  }
+  const countChars = (text, withSpaces) => (withSpaces ? len(strip(text)) : len(text.replace(/\s/g, "")));
+
+  // ── 섹션 ──
+  function parseMdSections(text) {
+    const lines = splitlines(text);
+    const headers = [];
+    lines.forEach((l, i) => { const m = l.match(MD_HEADER); if (m) headers.push([i, m[1].length, strip(m[2])]); });
+    return headers.map(([idx, level, name], n) => {
+      let end = lines.length;
+      for (const [i2, lv2] of headers.slice(n + 1)) if (lv2 <= level) { end = i2; break; }
+      return { name, level, body: lines.slice(idx + 1, end).join("\n"), start: idx + 2, end };
+    });
+  }
+  function findSection(sections, aliases) {
+    const keys = aliases.filter(Boolean).map(normalize);
+    return sections.find((s) => keys.includes(normalize(s.name)))
+      || sections.find((s) => keys.some((k) => k && normalize(s.name).includes(k))) || null;
+  }
+  function fieldAliases(field, config) {
+    for (const rule of config["글자수_제한"] || [])
+      if (normalize(rule["필드"] || "") === normalize(field)) return [field, ...(rule["별칭"] || [])];
+    return [field];
+  }
+  function matchingSections(sections, aliases) {
+    if (!sections.length) return [];
+    const top = Math.min(...sections.map((s) => s.level));
+    const keys = aliases.filter(Boolean).map(normalize);
+    return sections.filter((s) => s.level === top && keys.some((k) => normalize(s.name).startsWith(k)));
+  }
+
+  // ── 기계 점검 ──
+  function checkLengths(sections, config) {
+    const items = [];
+    const withSpaces = Boolean(config["공백_포함_글자수"] ?? true);
+    const basis = withSpaces ? "공백 포함" : "공백 제외";
+    for (const rule of config["글자수_제한"] || []) {
+      const field = rule["필드"] ?? "?", limit = Math.trunc(Number(rule["최대"] ?? 0));
+      const sec = findSection(sections, [field, ...(rule["별칭"] || [])]);
+      if (!sec) { items.push(item(WARN, `'${field}' 필드를 찾지 못했습니다`, `헤더 이름을 확인해 주세요. (예: # ${field})`)); continue; }
+      const n = countChars(sec.body, withSpaces);
+      const [rec, recName] = recommendedLine(rule, config);
+      const msg = `${fmt(n)}자 / ${recName} ${fmt(rec)}자 · 최대 ${fmt(limit)}자 (${basis}) · ${sec.start - 1}번째 줄의 '${sec.name}'`;
+      if (n > limit) items.push(item(FAIL, `'${field}' 필드 글자 수 초과 (+${fmt(n - limit)}자)`, msg));
+      else if (n > rec) items.push(item(WARN, `'${field}' 필드가 ${recName}선을 넘었습니다 (${recName} ${fmt(rec)}자, +${fmt(n - rec)}자)`, msg));
+      else items.push(item(PASS, `'${field}' 필드 글자 수 정상`, msg));
+    }
+    return items;
+  }
+
+  function matchBraces(text) {
+    const tokens = [...text.matchAll(/\{\{|\}\}/g)].map((m) => [m.index, m[0]]);
+    const stack = [], matched = new Set(), stray = [];
+    for (const [pos, tok] of tokens) {
+      if (tok === "{{") stack.push(pos);
+      else if (stack.length) matched.add(stack.pop());
+      else stray.push(pos);
+    }
+    return { tokens, matched, unclosed: stack, stray };
+  }
+  function linePreview(text, pos, before = false) {
+    let snippet;
+    if (before) {
+      const start = text.lastIndexOf("\n", pos - 1) + 1;
+      snippet = Array.from(strip(text.slice(start, pos + 2)));
+      snippet = snippet.length > 20 ? "..." + snippet.slice(-20).join("") : snippet.join("");
+    } else {
+      const end = text.indexOf("\n", pos);
+      snippet = Array.from(strip(text.slice(pos, end >= 0 ? end : text.length)));
+      snippet = snippet.length > 20 ? snippet.slice(0, 20).join("") + "..." : snippet.join("");
+    }
+    return `${lineOf(text, pos)}번째 줄 — ${snippet}`;
+  }
+  function checkUserVariable(text, sections, config) {
+    const items = [];
+    const all = [...text.matchAll(/\{\{\s*user\s*\}\}/gi)];
+    const exact = all.filter((m) => m[0] === "{{user}}");
+    const variants = all.filter((m) => m[0] !== "{{user}}");
+    let problems = 0;
+    const braces = matchBraces(text);
+
+    if (config["user_중첩_금지"] ?? true) {
+      const userStarts = new Set([...exact, ...variants].map((m) => m.index));
+      const nested = [], stack = [];
+      for (const [pos, tok] of braces.tokens) {
+        if (tok === "{{") {
+          if (userStarts.has(pos) && stack.some((p) => braces.matched.has(p))) nested.push(lineOf(text, pos));
+          stack.push(pos);
+        } else if (stack.length) stack.pop();
+      }
+      if (nested.length) {
+        problems++;
+        items.push(item(FAIL, "다른 변수 안에 {{user}}가 들어가 있습니다", `${fmtLines(nested)} — 변수 안에 변수를 넣으면 치환이 깨집니다.`));
+      }
+    }
+    if (config["user_헤더_금지"] ?? true) {
+      const hl = [];
+      splitlines(text).forEach((l, i) => { if (MD_HEADER.test(l) && /\{\{\s*user\s*\}\}/i.test(l)) hl.push(i + 1); });
+      if (hl.length) { problems++; items.push(item(FAIL, "섹션 제목(헤더)에 {{user}}가 들어가 있습니다", fmtLines(hl))); }
+    }
+    for (const forbidden of config["user_금지_섹션"] || []) {
+      const sec = findSection(sections, [forbidden]);
+      if (!sec || !/\{\{\s*user\s*\}\}/i.test(sec.body)) continue;
+      problems++;
+      const lines = all.map((m) => lineOf(text, m.index)).filter((ln) => sec.start <= ln && ln <= sec.end);
+      items.push(item(FAIL, `'${forbidden}' 섹션에는 {{user}}를 쓸 수 없습니다`, `'${sec.name}' 섹션 · ${fmtLines(lines)}`));
+    }
+    const typo = variants.map((m) => lineOf(text, m.index));
+    for (const m of text.matchAll(/\{\s*user\s*\}/gi)) {  // {user} (앞뒤 중괄호가 하나뿐인 것)
+      if (text[m.index - 1] !== "{" && text[m.index + m[0].length] !== "}") typo.push(lineOf(text, m.index));
+    }
+    for (const m of text.matchAll(/\{\{\s*(유저|사용자)\s*\}\}/g)) typo.push(lineOf(text, m.index));
+    if (typo.length) items.push(item(WARN, "{{user}} 표기가 정확하지 않은 곳이 있습니다", `${fmtLines(typo)} — 정확히 {{user}} (소문자, 공백 없음)로 써 주세요.`));
+
+    if (braces.unclosed.length || braces.stray.length) {
+      const opens = braces.tokens.filter(([, t]) => t === "{{").length;
+      const lines = [`'{{' ${opens}개, '}}' ${braces.tokens.length - opens}개`];
+      braces.unclosed.slice(0, 10).forEach((p) => lines.push(`닫히지 않은 '{{': ${linePreview(text, p)}`));
+      braces.stray.slice(0, 10).forEach((p) => lines.push(`여는 짝이 없는 '}}': ${linePreview(text, p, true)}`));
+      const extra = Math.max(0, braces.unclosed.length - 10) + Math.max(0, braces.stray.length - 10);
+      if (extra) lines.push(`... 외 ${extra}곳`);
+      items.push(item(WARN, "변수 괄호 짝이 맞지 않습니다", lines.join("\n")));
+    }
+    if (problems === 0) items.unshift(item(PASS, "금지된 위치에 {{user}}가 없습니다", `{{user}} 사용 횟수: 총 ${exact.length}회`));
+    return items;
+  }
+
+  // MELLOY 표시처럼 1.3만 / 8.5천 꼴로 반올림
+  function fmtTokens(n) {
+    if (n >= 10000) return (Math.floor(n / 1000 + 0.5) / 10).toFixed(1) + "만";
+    return (Math.floor(n / 100 + 0.5) / 10).toFixed(1) + "천";
+  }
+  function tokenText(total, config) {
+    const rate = config["토큰_환산"];
+    if (!rate || typeof rate !== "object" || total <= 0) return "";
+    let a = fmtTokens(total * Number(rate["최소"] ?? 0.65));
+    const b = fmtTokens(total * Number(rate["최대"] ?? 1.05));
+    if (a.slice(-1) === b.slice(-1)) a = a.slice(0, -1);
+    return `약 ${a}~${b} 토큰`;
+  }
+  /** MELLOY 설정 크기: 세계관(설명) / 주연 / 조연(턴당 최대 인원만) / 로어북(상한까지) */
+  function settingSize(sections, config) {
+    const rule = config["합계_제한"];
+    const loreCap = Math.trunc(Number(rule["로어북_반영_상한"] ?? 3000));
+    const names = config["표시_이름"] || {};
+    const parts = [];
+    let total = 0;
+    for (const field of rule["대상_필드"] || []) {
+      const key = normalize(field);
+      const isMain = Boolean(config["카드_항목"]) && key === normalize(config["카드_항목"]);
+      const isSub = Boolean(config["조연_항목"]) && key === normalize(config["조연_항목"]);
+      let label = names[field] ?? field, note = "", found, counts, used;
+      if (isMain || isSub) {
+        const [head, cards] = cardSections(sections, config, field);
+        found = head !== null;
+        counts = cards.map((c) => countChars(c.body, true));
+        label += ` ${counts.length}명`;
+        if (isSub) {
+          const perTurn = Math.trunc(Number(config["조연_턴당_최대"] ?? 2));
+          used = [...counts].sort((x, y) => y - x).slice(0, perTurn).reduce((x, y) => x + y, 0);
+          note = `턴당 최대 ${perTurn}명`;
+        }
+      } else {
+        const secs = matchingSections(sections, fieldAliases(field, config));
+        found = secs.length > 0;
+        counts = secs.map((x) => countChars(x.body, true));
+      }
+      const actual = counts.reduce((x, y) => x + y, 0);
+      if (used === undefined) used = key === normalize("로어북") ? Math.min(actual, loreCap) : actual;
+      if (key === normalize("로어북") && loreCap) note = `최대 ${fmt(loreCap)}자 반영`;
+      total += used;
+      parts.push({ field, label, used, actual, counts, found, note, isCard: isMain || isSub, isSub });
+    }
+    return [parts, total];
+  }
+
+  function checkTotalLength(sections, config) {
+    const rule = config["합계_제한"];
+    const recommended = Math.trunc(Number(rule["권장"] ?? 20000));
+    const maximum = Math.trunc(Number(rule["최대"] ?? 30000));
+    const [parts, total] = settingSize(sections, config);
+    const texts = parts.map((p) => {
+      let t = `${p.label} ${fmt(p.used)}`;
+      const extra = p.note ? [p.note] : [];
+      if (p.actual > p.used) extra.push(`실제 ${fmt(p.actual)}`);
+      if (extra.length) t += "(" + extra.join(", ") + ")";
+      if (p.counts.length > 1) t += (p.isCard ? " [" : ` [${p.counts.length}개 섹션: `) + p.counts.map(fmt).join(" + ") + "]";
+      return t;
+    });
+    const missing = parts.filter((p) => !p.found && !p.isSub).map((p) => p.field);
+    let detail = texts.join(" / ") + ` = ${fmt(total)}자 (공백 포함)`;
+    const tokens = tokenText(total, config);
+    if (tokens) detail += `\n예상 토큰: ${tokens} (MELLOY 표시와 다를 수 있는 추정치)`;
+    detail += `\n권장 ${fmt(recommended)}자 / 최대 ${fmt(maximum)}자`;
+    if (missing.length) detail += "\n찾지 못한 섹션(0자로 계산): " + missing.map((m) => `'${m}'`).join(", ");
+    const r = { total, recommended, maximum, sizes: parts, tokens };
+    if (total > maximum) return [Object.assign(item(FAIL, `설정 크기가 최대를 넘었습니다 (+${fmt(total - maximum)}자)`, detail), r)];
+    if (total > recommended) return [Object.assign(item(WARN, `설정 크기가 권장을 넘었습니다 (+${fmt(total - recommended)}자)`, detail), r)];
+    return [Object.assign(item(PASS, "설정 크기 정상", detail), r)];
+  }
+
+  function varField(lines, tag) {
+    for (let k = 0; k < lines.length; k++) {
+      const [no, line] = lines[k];
+      const m = line.match(VAR_TAG);
+      if (!m || strip(m[1]) !== tag) continue;
+      const body = [m[2]];
+      for (const [, nxt] of lines.slice(k + 1)) { if (startsWithAny(nxt.trimStart(), ["[", "#"])) break; body.push(nxt); }
+      return [strip(body.join("\n")), no];
+    }
+    return null;
+  }
+  function varLines(lines, tag) {
+    for (let k = 0; k < lines.length; k++) {
+      const [no, line] = lines[k];
+      const m = line.match(VAR_TAG);
+      if (!m || strip(m[1]) !== tag) continue;
+      const result = strip(m[2]) ? [[no, strip(m[2])]] : [];
+      for (const [nno, nxt] of lines.slice(k + 1)) {
+        if (startsWithAny(nxt.trimStart(), ["[", "#"])) break;
+        if (strip(nxt)) result.push([nno, strip(nxt)]);
+      }
+      return result;
+    }
+    return [];
+  }
+  function checkVariables(sections, config) {
+    const rule = config["변수_검사"];
+    const limit = Math.trunc(Number(rule["변수_내용_최대"] ?? 200));
+    const noSpace = Boolean(rule["변수_이름_공백_금지"] ?? true);
+    let found = matchingSections(sections, ["변수"]);
+    const exactFound = found.filter((s) => normalize(s.name) === normalize("변수"));
+    if (exactFound.length) found = exactFound;
+    if (!found.length) return [item(WARN, "'변수' 섹션을 찾지 못해 변수 검사를 건너뜁니다", "헤더를 '# 변수' 로 적어 주세요.")];
+    const blocks = [];
+    for (const sec of found) splitlines(sec.body).forEach((line, off) => {
+      const m = line.match(VAR_TAG);
+      if (m && strip(m[1]) === "변수 이름") blocks.push([]);
+      if (blocks.length) blocks[blocks.length - 1].push([sec.start + off, line]);
+    });
+    if (!blocks.length) return [item(WARN, "'변수' 섹션에 [변수 이름] 블록이 없습니다", "각 변수는 '[변수 이름] 이름 / 텍스트' 줄로 시작해야 합니다.")];
+    const items = [];
+    let nameFail = 0, lenFail = 0, rowWarn = 0, longest = ["", 0];
+    const kinds = { "텍스트": 0, "게이지": 0 };
+    for (const block of blocks) {
+      const [headNo, head] = block[0];
+      const raw = strip(head.match(VAR_TAG)[2]);
+      let [name, sep, kind] = rpartition(raw, "/");
+      [name, kind] = sep ? [strip(name), strip(kind)] : [raw, ""];
+      const label = name || "(이름 없음)";
+      if (!(kind in kinds)) items.push(item(WARN, `변수 '${label}'의 종류를 알 수 없습니다`, `${headNo}번째 줄 — '이름 / 텍스트' 또는 '이름 / 게이지' 형식으로 적어 주세요.`));
+      else kinds[kind]++;
+      if (noSpace && /\s/.test(name)) { nameFail++; items.push(item(FAIL, `변수 이름 '${name}'에 공백이 있습니다`, `${headNo}번째 줄 — 공백 대신 밑줄(_)을 쓰거나 붙여 써 주세요.`)); }
+      const tag = kind === "게이지" ? "값이 변하는 조건" : "변수 내용";
+      const f = varField(block, tag);
+      if (!f) items.push(item(WARN, `변수 '${label}'에 [${tag}] 칸이 없습니다`, `${headNo}번째 줄의 변수`));
+      else {
+        const [text, no] = f, n = len(text);
+        if (n > longest[1]) longest = [label, n];
+        if (n > limit) { lenFail++; items.push(item(FAIL, `변수 '${label}'의 [${tag}]이 ${fmt(n)}자입니다 (최대 ${fmt(limit)}자, +${fmt(n - limit)}자)`, `${no}번째 줄`)); }
+      }
+      for (const [no, row] of varLines(block, "구간별 행동")) {
+        if (len(row) > limit) { rowWarn++; items.push(item(WARN, `변수 '${label}'의 [구간별 행동] 한 줄이 ${fmt(len(row))}자입니다 (기준 ${fmt(limit)}자)`, `${no}번째 줄 — ${Array.from(row).slice(0, 20).join("")}...`)); }
+      }
+    }
+    const summary = `텍스트 ${kinds["텍스트"]}개 / 게이지 ${kinds["게이지"]}개`;
+    const ok = [];
+    const countRules = ["텍스트", "게이지"].filter((k) => rule[`${k}_최대`] != null).map((k) => [k, Math.trunc(Number(rule[`${k}_최대`]))]);
+    const over = countRules.filter(([k, m]) => kinds[k] > m);
+    for (const [k, m] of over) items.unshift(item(FAIL, `${k} 변수가 ${kinds[k]}개입니다 (최대 ${m}개)`, "플랫폼에 등록할 수 있는 개수를 넘었습니다."));
+    if (countRules.length && !over.length) ok.push(item(PASS, "변수 개수가 한도 안입니다", countRules.map(([k, m]) => `${k} ${kinds[k]}/${m}개`).join(" / ")));
+    if (noSpace && nameFail === 0) ok.push(item(PASS, `변수 이름에 공백이 없습니다 (${blocks.length}개)`, summary));
+    if (lenFail === 0) ok.push(item(PASS, `변수 내용이 모두 ${fmt(limit)}자 이내입니다`, longest[0] ? `가장 긴 변수: '${longest[0]}' ${fmt(longest[1])}자` : ""));
+    if (kinds["게이지"] && rowWarn === 0) ok.push(item(PASS, `[구간별 행동]의 모든 줄이 ${fmt(limit)}자 이내입니다`));
+    return [...ok, ...items];
+  }
+
+  // ── 다인챗 검사 ──
+  function cardSections(sections, config, itemName) {
+    const name = itemName || config["카드_항목"];
+    const found = name ? matchingSections(sections, fieldAliases(name, config)) : [];
+    if (!found.length) return [null, []];
+    const cards = [];
+    for (const part of found) {
+      const inner = sections.filter((s) => s.level > part.level && part.start <= s.start - 1 && s.start - 1 <= part.end);
+      const level = inner.length ? Math.min(...inner.map((s) => s.level)) : 0;
+      cards.push(...inner.filter((s) => s.level === level));
+    }
+    return [found[0], cards];
+  }
+  const cardName = (heading) => strip(heading.replace(/\s*[(（].*$/, ""));
+  function cardTemplateSubs(config, templateText) {
+    if (!templateText) return [];
+    try { return buildSchema(templateText, config).parts.filter((p) => p.kind === "cards" && !p.optional).flatMap((p) => p.cardFields.filter((f) => f.title).map((f) => f.title)); }
+    catch { return []; }
+  }
+  function castNames(text) {
+    const names = [];
+    for (let it of text.split(/[／;；]/)) {
+      it = strip(strip(it).replace(/^[-·*•]+/, ""));
+      const name = strip(it.split(/[(（—–,/|]| - /)[0]).replace(/^["'“”「」]+|["'“”「」]+$/g, "");
+      if (name && !name.startsWith("(") && len(name) <= 12 && name !== "이름") names.push(name);
+    }
+    return names;
+  }
+  function checkCastList(sections, cards, subCards = []) {
+    const cast = sections.find((s) => normalize(s.name).includes("캐스트"));
+    if (!cast) return [];
+    const listed = [];
+    let on = false;
+    for (const line of splitlines(cast.body)) {
+      const st = strip(line);
+      if (/^[-*•]?\s*명단\s*[:：]/.test(st)) { on = true; listed.push(...castNames(st.split(/[:：]/).slice(1).join(":"))); continue; }
+      if (on) {
+        if (!st) continue;
+        if (st.startsWith("#") || (![" ", "\t"].includes(line[0]) && startsWithAny(st, ["-", "*", "•"]))) break;
+        listed.push(...castNames(st));
+      }
+    }
+    const cardNames = cards.map((c) => cardName(c.name)).filter((n) => n && !n.startsWith("("));
+    if (!listed.length || !cardNames.length) return [];
+    const key = (n) => n.replace(/\s/g, "").toLowerCase();
+    const cardKeys = new Set([...cardNames, ...subCards.map((c) => cardName(c.name))].map(key)), listKeys = new Set(listed.map(key));
+    const noCard = listed.filter((n) => !cardKeys.has(key(n))), noList = cardNames.filter((c) => !listKeys.has(key(c)));
+    const items = [];
+    if (noCard.length) items.push(item(WARN, "명단에는 있지만 카드가 없는 인물이 있습니다", noCard.join(", ")));
+    if (noList.length) items.push(item(WARN, "카드는 있지만 '캐스트 구성' 명단에 없는 인물이 있습니다", noList.join(", ")));
+    if (!items.length) items.push(item(PASS, `캐스트 명단과 카드 이름이 일치합니다 (${cardNames.length}명)`));
+    return items;
+  }
+  function checkCards(sections, config, templateText) {
+    const rule = { "최대": 5000, ...(config["카드_글자수"] || {}) };
+    const limit = Math.trunc(Number(rule["최대"])), [goal, goalName] = recommendedLine(rule, config);
+    const [part, cards] = cardSections(sections, config);
+    const title = config["카드_항목"];
+    if (!part) return [item(WARN, `'${title}' 항목을 찾지 못해 카드 검사를 건너뜁니다`, `헤더를 '# ${title}' 로 적어 주세요.`)];
+    if (!cards.length) return [item(FAIL, "등장인물 카드가 한 장도 없습니다", "카드마다 '## 이름' 제목으로 시작해 주세요.")];
+    const subTitle = config["조연_항목"];
+    const subCards = subTitle ? cardSections(sections, config, subTitle)[1] : [];
+    let items = [];
+    const sizes = [], required = cardTemplateSubs(config, templateText);
+    let sizeProblem = false, missingAny = false;
+    for (const c of [...cards, ...subCards]) {
+      const label = (cardName(c.name) || c.name) + (subCards.includes(c) ? `(${subTitle})` : ""), n = countChars(c.body, true), where = `${c.start - 1}번째 줄`;
+      sizes.push(`${label} ${fmt(n)}`);
+      if (n > limit) { sizeProblem = true; items.push(item(FAIL, `'${label}' 카드가 ${fmt(n)}자입니다 (최대 ${fmt(limit)}자, +${fmt(n - limit)}자)`, where)); }
+      else if (n > goal) { sizeProblem = true; items.push(item(WARN, `'${label}' 카드가 ${goalName}선을 넘었습니다 (${fmt(n)}자 / ${goalName} ${fmt(goal)}자)`, where)); }
+      const subs = sections.filter((s) => s.level > c.level && c.start <= s.start - 1 && s.start - 1 <= c.end);
+      const missing = required.filter((r) => !subs.some((s) => normalize(s.name) === normalize(r)));
+      if (missing.length) { missingAny = true; items.push(item(FAIL, `'${label}' 카드에 없는 칸: ` + missing.join(", "), where)); }
+    }
+    const head = [];
+    const count = `카드 ${cards.length}장` + (subCards.length ? `(조연 ${subCards.length}장 별도)` : "");
+    if (!sizeProblem) head.push(item(PASS, `${count} 모두 ${fmt(goal || limit)}자 이내입니다`, sizes.join(" / ")));
+    if (required.length && !missingAny) head.push(item(PASS, `모든 카드에 칸 ${required.length}개가 있습니다`, required.join(", ")));
+    items = [...head, ...items];
+    if (config["캐스트_명단_대조"]) items.push(...checkCastList(sections, cards, subCards));
+    return items;
+  }
+  const DIVIDER = /^\s*([-─━=═~*_·•+])\1{3,}\s*$/;
+  function checkLorebook(sections, config) {
+    const rule = config["로어북_검사"];
+    const found = matchingSections(sections, ["로어북"]);
+    if (!found.length) return [item(WARN, "'로어북' 섹션을 찾지 못해 로어북 검사를 건너뜁니다", "헤더를 '# 로어북' 으로 적어 주세요.")];
+    const lines = found.flatMap((sec) => splitlines(sec.body).map((l, i) => [sec.start + i, l]));
+    const items = [];
+    const maxDiv = Math.trunc(Number(rule["구분선_최대"] ?? 12));
+    const long = lines.filter(([, l]) => DIVIDER.test(l) && len(strip(l)) > maxDiv).map(([no]) => no);
+    if (long.length) items.push(item(WARN, `${maxDiv}자를 넘는 구분선이 있습니다`, `${fmtLines(long)} — 코드블록은 자동 줄바꿈이 안 되므로 구분선을 ${maxDiv}자 이내로 줄여 주세요.`));
+    else items.push(item(PASS, `구분선이 모두 ${maxDiv}자 이내입니다`));
+    if (rule["명령어_형식_필수"] ?? true) {
+      const entries = [];
+      for (const [no, l] of lines) {
+        const m = l.match(LORE_HEAD);
+        if (m) entries.push([no, strip(m[2]), []]);
+        else if (entries.length && !l.trimStart().startsWith("#")) entries[entries.length - 1][2].push(l);
+      }
+      const missing = [];
+      for (const [no, trigger, body] of entries) {
+        if (!trigger.startsWith("!")) continue;
+        const fm = body.map((b) => b.match(VAR_TAG)).find((m) => m && strip(m[1]) === "출력 형식");
+        const fv = fm ? fm[2] : "";
+        if (fv.includes("코드블록") === fv.includes("마크다운")) missing.push([no, trigger]);
+      }
+      if (missing.length) items.push(item(WARN, "출력 형식(코드블록 / 마크다운)을 정하지 않은 명령어가 있습니다",
+        missing.map(([, t]) => t).join(", ") + ` — ${fmtLines(missing.map(([n]) => n))}`));
+      else if (entries.some(([, t]) => t.startsWith("!"))) items.push(item(PASS, "명령어마다 출력 형식이 정해져 있습니다"));
+    }
+    return items;
+  }
+  const TURN_TIME = /턴\s*(?:에|당|마다)\s*[^\n.]{0,12}?\d+\s*(?:~\s*\d+\s*)?(?:분|시간)/g;
+  function checkTurnTime(text) {
+    const hits = [...text.matchAll(TURN_TIME)].map((m) => lineOf(text, m.index));
+    if (hits.length) return [item(WARN, "턴 단위 시간 표현이 있습니다", `${fmtLines(hits)} — '한 턴에 ○분' 대신 서술된 행동의 소요 시간대로 흐르게 써 주세요.`)];
+    return [item(PASS, "턴 단위 시간 표현이 없습니다")];
+  }
+
+  function templateHeaders(config, templateText) {
+    if (!config["템플릿_파일"] || !(config["템플릿_헤더_필수"] ?? true) || !templateText) return [];
+    const sub = normalize(config["조연_항목"] || "\0");  // 조연은 없어도 됨
+    return parseMdSections(templateText).map((s) => strip(s.name.replace(/\([^)]*\)/g, ""))).filter((n) => normalize(n) && normalize(n) !== sub);
+  }
+  function checkSections(res, config, templateText) {
+    const items = [];
+    if (!res.length) return [item(FAIL, "생성 결과에서 섹션 헤더를 하나도 찾지 못했습니다", "헤더는 '# 제목' 형태로 한 줄에 단독으로 적어 주세요.")];
+    const required = [...(config["필수_섹션"] || []).map((n) => [n, "필수 섹션"]),
+      ...templateHeaders(config, templateText).map((n) => [n, `템플릿(${config["템플릿_파일"]})`])];
+    const seen = new Set();
+    let missing = 0;
+    for (const [name, source] of required) {
+      if (seen.has(normalize(name))) continue;
+      seen.add(normalize(name));
+      if (!findSection(res, [name])) { missing++; items.push(item(FAIL, `'${name}' 섹션이 없습니다`, `기준: ${source}`)); }
+    }
+    if (required.length && missing === 0) items.push(item(PASS, `필수 섹션 ${seen.size}개가 모두 있습니다`, required.slice(0, 20).map(([n]) => n).join(", ")));
+    if (config["원본_헤더_비교"] ?? true) items.push(item(INFO, "원본 설정에서 헤더를 찾지 못해 헤더 비교를 건너뜁니다"));
+    return items;
+  }
+
+  /** PC판 run_mechanical_checks("", text, config) 와 같은 결과 */
+  function runChecks(text, config, templateText) {
+    if (!strip(text)) return [["기본 확인", [item(FAIL, "생성 결과 내용이 비어 있습니다", "검사할 생성 결과 파일을 먼저 불러와 주세요.")]]];
+    const secs = parseMdSections(text);
+    const groups = [
+      ["글자 수 검사", checkLengths(secs, config)],
+      ["{{user}} 위치 검사", checkUserVariable(text, secs, config)],
+      ["필수 섹션 / 헤더 검사", checkSections(secs, config, templateText)],
+    ];
+    if (config["합계_제한"] && typeof config["합계_제한"] === "object") groups.push(["설정 크기 검사", checkTotalLength(secs, config)]);
+    if (config["변수_검사"] && typeof config["변수_검사"] === "object") groups.push(["변수 검사", checkVariables(secs, config)]);
+    if (config["카드_항목"]) groups.push(["등장인물 카드 검사", checkCards(secs, config, templateText)]);
+    if (config["로어북_검사"] && typeof config["로어북_검사"] === "object") groups.push(["로어북 검사", checkLorebook(secs, config)]);
+    if (config["턴_시간표현_금지"]) groups.push(["시간 표현 검사", checkTurnTime(text)]);
+    return groups;
+  }
+
+  // ── 템플릿 양식 ──
+  function headingKey(line) {
+    let s = strip(line);
+    if (!s || (startsWithAny(s, BULLETS) && !s.startsWith("#"))) return "";
+    s = strip(s.replace(/^#+/, ""));
+    const n = len(s);
+    return n > 0 && n <= 60 ? normalize(s) : "";
+  }
+  const compact = (s) => s.replace(/\s/g, "");
+
+  function parseTagBody(lines) {
+    const values = {}, order = [], multi = new Set();
+    let cur = null, buf = [], inline = "";
+    const flush = () => {
+      if (cur === null) return;
+      if (!strip(inline) && buf.some((b) => strip(b))) multi.add(cur);
+      values[cur] = strip([...(strip(inline) ? [strip(inline)] : []), ...buf].join("\n"));
+    };
+    for (const line of lines) {
+      const m = line.match(VAR_TAG);
+      if (m) { flush(); cur = strip(m[1]); inline = m[2]; buf = []; order.push(cur); }
+      else if (cur !== null) buf.push(rstrip(line));
+    }
+    flush();
+    return [values, order, multi];
+  }
+
+  function splitBlocks(lines, kind, groupTitles) {
+    const groupKeys = new Map(groupTitles.map((g) => [normalize(g), g]));
+    let heading = groupTitles[0] || "";
+    const result = [];
+    let head = null, body = [];
+    const close = () => {
+      if (!head) return;
+      const [values, order, multi] = parseTagBody(body);
+      let [group, name] = head;
+      if (kind === "lore") group = heading;
+      result.push([heading, { group, name, values }, order, multi]);
+    };
+    for (const line of lines) {
+      const hk = headingKey(line);
+      if (hk && groupKeys.has(hk) && !VAR_HEAD.test(line) && !LORE_HEAD.test(line)) {
+        close(); head = null; body = []; heading = groupKeys.get(hk); continue;
+      }
+      const m = line.match(kind === "var" ? VAR_HEAD : LORE_HEAD);
+      if (m) {
+        close(); body = [];
+        if (kind === "var") {
+          const [name, sep, typ] = rpartition(strip(m[1]), "/");
+          head = sep ? [strip(typ), strip(name)] : ["", strip(m[1])];
+        } else head = ["", strip(m[2])];
+        continue;
+      }
+      if (head) body.push(line);
+    }
+    close();
+    return result;
+  }
+
+  function blockText(block, group, kind, number = 0) {
+    const lines = [kind === "var"
+      ? (block.group ? `[변수 이름] ${block.name} / ${block.group}` : `[변수 이름] ${block.name}`)
+      : rstrip(`${number}. 트리거: ${block.name}`)];
+    const tags = group ? [...group.tags] : [];
+    for (const t of Object.keys(block.values)) if (!tags.includes(t)) tags.push(t);
+    for (const tag of tags) {
+      const value = block.values[tag] ?? "";
+      if ((group && group.multiline.has(tag)) || value.includes("\n")) { lines.push(`[${tag}]`); if (value) lines.push(value); }
+      else lines.push(rstrip(`[${tag}] ${value}`));
+    }
+    return lines;
+  }
+
+  function splitNotes(lines) {
+    const body = [], notes = [];
+    for (const l of lines) (strip(l).startsWith("※") ? notes : body).push(l);
+    return [body, notes];
+  }
+  function proseFields(partTitle, sec, children) {
+    const bodyLines = splitlines(sec.body);
+    const fields = [];
+    const first = children.length ? children[0].start - 1 - sec.start : bodyLines.length;
+    const [introLines, introNotes] = splitNotes(bodyLines.slice(0, first));
+    const intro = stripNL(introLines.join("\n"));
+    if (strip(intro) || !children.length) fields.push({ part: partTitle, title: "", guide: intro, subHeads: [], notes: introNotes });
+    for (const c of children) {
+      const [lines, notes] = splitNotes(splitlines(c.body));
+      const subs = lines.map((l) => l.match(MD_HEADER)).filter(Boolean).map((m) => strip(m[2]));
+      fields.push({ part: partTitle, title: c.name, guide: rstrip(stripNL(lines.join("\n"))), subHeads: subs, notes });
+    }
+    for (const f of fields) { f.key = `${f.part}\u0000${f.title}`; f.label = f.title || `${f.part} 머리말`; }
+    return fields;
+  }
+
+  function buildSchema(text, config) {
+    const secs = parseMdSections(text);
+    if (!secs.length) throw new Error("'# 제목' 으로 된 큰 항목이 없습니다.");
+    const cardPart = normalize((config && config["카드_항목"]) || "");
+    const subPart = normalize((config && config["조연_항목"]) || "");
+    const topLevel = Math.min(...secs.map((s) => s.level));
+    const parts = [], allNotes = [];
+    for (const top of secs.filter((s) => s.level === topLevel)) {
+      const inner = secs.filter((s) => s.level > topLevel && top.start <= s.start - 1 && s.start - 1 <= top.end);
+      const childLevel = inner.length ? Math.min(...inner.map((s) => s.level)) : 0;
+      const children = inner.filter((s) => s.level === childLevel);
+      const [bodyLines, partNotes] = splitNotes(splitlines(top.body));
+      allNotes.push(...partNotes);
+      const nt = normalize(top.name);
+      if (nt === normalize("변수") || nt === normalize("로어북")) {
+        const kind = nt === normalize("변수") ? "var" : "lore";
+        const titles = children.map((c) => c.name);
+        const split = splitBlocks(bodyLines, kind, titles);
+        const groups = new Map();
+        for (const [heading, block, order, multi] of split) {
+          const gkey = kind === "var" ? block.group : heading;
+          let g = groups.get(gkey);
+          if (!g) {
+            g = { title: kind === "var" ? heading : gkey, kind: gkey, tags: [...order], multiline: new Set(multi), short: new Set(),
+                  sample: blockText(block, null, kind, 1).join("\n") };
+            groups.set(gkey, g);
+          }
+          multi.forEach((t) => g.multiline.add(t));
+        }
+        for (const g of groups.values())
+          g.short = new Set(g.tags.filter((t) => !g.multiline.has(t)
+            && split.filter(([, b]) => b.group === g.kind).every(([, b]) => len(b.values[t] ?? "") <= 30)));
+        let ordered;
+        if (kind === "lore") {
+          for (const t of titles) if (!groups.has(t)) groups.set(t, { title: t, kind: t, tags: ["내용"], multiline: new Set(), short: new Set(), sample: "" });
+          ordered = titles.map((t) => groups.get(t));
+        } else ordered = [...groups.values()];
+        parts.push({ title: top.name, kind, fields: [], groups: ordered, defaults: split.map(([, b]) => b), cardFields: [], cardTitle: "", notes: partNotes });
+        continue;
+      }
+      if (subPart && nt === subPart && cardPart) {
+        // 조연 카드: 칸 구성은 주연 카드와 같음 (아래에서 채움)
+        parts.push({ title: top.name, kind: "cards", fields: [], groups: [], defaults: [], cardFields: [], cardTitle: `(${top.name} 이름)`, notes: partNotes, optional: true });
+        continue;
+      }
+      if (cardPart && nt === cardPart && children.length) {
+        const proto = children[0];
+        const subs = inner.filter((s) => s.level > childLevel && proto.start <= s.start - 1 && s.start - 1 <= proto.end);
+        const subLevel = subs.length ? Math.min(...subs.map((s) => s.level)) : 0;
+        const cardFields = proseFields(top.name, proto, subs.filter((s) => s.level === subLevel));
+        cardFields.forEach((f) => allNotes.push(...f.notes));
+        const [, introNotes] = splitNotes(splitlines(top.body).slice(0, proto.start - 1 - top.start));
+        parts.push({ title: top.name, kind: "cards", fields: [], groups: [], defaults: [], cardFields, cardTitle: proto.name, notes: introNotes });
+        continue;
+      }
+      const fields = proseFields(top.name, top, children);
+      fields.forEach((f) => allNotes.push(...f.notes));
+      parts.push({ title: top.name, kind: "prose", fields, groups: [], defaults: [], cardFields: [], cardTitle: "", notes: [] });
+    }
+    const main = parts.find((p) => p.kind === "cards" && !p.optional);
+    for (const p of parts) {
+      if (!p.optional) continue;
+      if (main) { p.cardFields = main.cardFields; continue; }
+      const f = { part: p.title, title: "", guide: "", subHeads: [], notes: p.notes, key: `${p.title}\u0000`, label: `${p.title} 머리말` };
+      Object.assign(p, { kind: "prose", fields: [f], notes: [] });
+    }
+    return { parts, lines: new Set(splitlines(text).map(strip).filter(Boolean)), noteLines: new Set(allNotes.map(strip).filter(Boolean)), text };
+  }
+
+  let cardUid = 0;
+  const cardLabel = (card) => strip(card.name.replace(/\s*\(.*$/, "")) || strip(card.name) || "(이름 없음)";
+  function defaultCard(part, name) {
+    return { uid: ++cardUid, name: name == null ? part.cardTitle : name, sections: Object.fromEntries(part.cardFields.map((f) => [f.title, f.guide])) };
+  }
+  const cloneBlock = (b) => ({ group: b.group, name: b.name, values: { ...b.values } });
+  function defaultForm(schema) {
+    const prose = {}, blocks = {}, cards = {};
+    for (const p of schema.parts) {
+      for (const f of p.fields) prose[f.key] = f.guide;
+      if (p.kind === "var" || p.kind === "lore") blocks[p.title] = p.defaults.map(cloneBlock);
+      if (p.kind === "cards") cards[p.title] = p.optional ? [] : [defaultCard(p)];
+    }
+    return { prose, blocks, cards };
+  }
+  const groupOf = (part, block) => part.groups.find((g) => g.kind === block.group) || part.groups[0] || null;
+  const cardFieldLabel = (card, f) => `${cardLabel(card)} › ${f.title || "머리말"}`;
+
+  function assemble(schema, form, natural = false) {
+    const out = [], owner = [];
+    const add = (line, who) => { out.push(line); owner.push(who); };
+    const head = (level, text) => (natural ? text : `${"#".repeat(level)} ${text}`);
+    const addNotes = (notes, who) => { if (natural) for (const n of notes) add(n, who); };
+    const addText = (text, who) => { text = rstrip(stripNL(text ?? "")); for (const line of text ? splitlines(text) : []) add(line, who); };
+    for (const part of schema.parts) {
+      if (out.length) add("", part.title);
+      add(head(1, part.title), part.title);
+      addNotes(part.notes || [], part.title);
+      if (part.kind === "prose") {
+        for (const f of part.fields) {
+          if (f.title) { add("", f.label); add(head(2, f.title), f.label); }
+          addText(form.prose[f.key], f.label);
+          addNotes(f.notes, f.label);
+        }
+        continue;
+      }
+      if (part.kind === "cards") {
+        for (const card of (form.cards && form.cards[part.title]) || []) {
+          const who = cardLabel(card);
+          add("", who);
+          const name = strip(card.name) || part.cardTitle;
+          add(natural ? `■ ${part.optional ? part.title : "캐릭터"}: ${name}` : `## ${name}`, who);
+          for (const f of part.cardFields) {
+            const label = cardFieldLabel(card, f);
+            if (f.title) { add("", label); add(head(3, f.title), label); }
+            addText(card.sections[f.title], label);
+            addNotes(f.notes, label);
+          }
+        }
+        continue;
+      }
+      let number = 0;
+      const blocks = form.blocks[part.title] || [];
+      for (const g of part.groups) {
+        add("", part.title); add(head(2, g.title), part.title);
+        for (const b of blocks.filter((b) => groupOf(part, b) === g)) {
+          number++;
+          const who = part.kind === "var" ? `변수 '${b.name}'` : `${part.title} ${number}번 '${b.name}'`;
+          add("", who);
+          for (const line of splitlines(blockText(b, g, part.kind, number).join("\n"))) add(line, who);
+        }
+      }
+    }
+    return [rstrip(out.join("\n")) + "\n", owner];
+  }
+
+  function buildSourceForm(schema) {
+    const [text] = assemble(schema, defaultForm(schema), true);
+    const lines = splitlines(text).map((l) => { const m = l.match(MD_HEADER); return m ? strip(m[2]) : l; });
+    const note = schema.parts.some((p) => p.kind === "cards") ? SOURCE_FORM_NOTE_CARDS : SOURCE_FORM_NOTE;
+    return [...note, "", ...lines].join("\n") + "\n";
+  }
+
+  function restoreSubHeads(text, subHeads) {
+    let keys = subHeads.map((h) => compact(h.replace(/\([^)]*\)/g, "")));
+    const freeHeads = keys.some((k) => !k);
+    keys = keys.filter(Boolean);
+    if (!keys.length && !freeHeads) return text;
+    return splitlines(text).map((line) => {
+      const s = strip(line);
+      if (s && !startsWithAny(s, ["#", ...BULLETS]) && len(s) <= 60) {
+        if (keys.some((k) => compact(s).startsWith(k))
+          || (freeHeads && len(s) <= 30 && ![".", "다", "요", ":"].some((e) => s.endsWith(e)))) return `### ${s}`;
+      }
+      return line;
+    }).join("\n");
+  }
+
+  function fillFromText(schema, text, config) {
+    const form = defaultForm(schema);
+    const partKeys = new Map();
+    for (const p of schema.parts) for (const a of fieldAliases(p.title, config)) if (!partKeys.has(normalize(a))) partKeys.set(normalize(a), p);
+    let cur = null, skipping = false, field = null, cardSub = null;
+    const seen = new Set(), buf = new Map(), raw = new Map(), cards = new Map(), unplaced = [], notes = [];
+    for (const line of splitlines(text)) {
+      if ((schema.noteLines.size && schema.noteLines.has(strip(line))) || SOURCE_FORM_NOTE_CARDS.includes(strip(line))) continue;
+      const hk = headingKey(line);
+      const headM = line.match(CARD_HEAD);
+      if (headM) {
+        // '■ 캐릭터:' 줄은 어디에 있든 카드의 시작이므로 카드 항목으로 넘어갑니다 ('■ 조연:' 은 조연 항목)
+        const wantSub = headM[1] === "조연";
+        const cardPart = schema.parts.find((p) => p.kind === "cards" && Boolean(p.optional) === wantSub);
+        if (cardPart && cardPart !== cur) { cur = cardPart; skipping = false; field = null; cardSub = null; seen.add(cur.title); }
+      }
+      if (hk && partKeys.has(hk)) {
+        cur = partKeys.get(hk);
+        skipping = seen.has(cur.title) && cur.kind !== "cards";
+        if (skipping) notes.push(`'${cur.title}' 항목이 두 번 이상 나옵니다. 한 벌만 다루므로 두 번째부터는 넣지 않았습니다.`);
+        seen.add(cur.title);
+        field = cur.fields.find((f) => !f.title) || null;
+        cardSub = null;
+        continue;
+      }
+      if (!cur || skipping) { if (strip(line) && !strip(line).startsWith("※")) unplaced.push(line); continue; }
+      if (cur.kind === "cards") {
+        const md = line.match(MD_HEADER), nat = line.match(CARD_HEAD);
+        const sub = cur.cardFields.find((f) => f.title && hk && normalize(f.title) === hk);
+        if (!cards.has(cur.title)) cards.set(cur.title, []);
+        const list = cards.get(cur.title);
+        if ((md && md[1].length === 2) || nat) {
+          list.push([strip(nat ? nat[2] : md[2]), new Map()]);
+          cardSub = cur.cardFields.find((f) => !f.title) ? "" : null;
+          continue;
+        }
+        if (sub) {
+          if (!list.length) list.push(["", new Map()]);
+          cardSub = sub.title;
+          const secs = list[list.length - 1][1];
+          if (!secs.has(cardSub)) secs.set(cardSub, []);
+          continue;
+        }
+        if (!list.length || cardSub === null) { if (strip(line)) unplaced.push(line); continue; }
+        const secs = list[list.length - 1][1];
+        if (!secs.has(cardSub)) secs.set(cardSub, []);
+        secs.get(cardSub).push(line);
+        continue;
+      }
+      if (cur.kind !== "prose") { if (!raw.has(cur.title)) raw.set(cur.title, []); raw.get(cur.title).push(line); continue; }
+      const match = cur.fields.find((f) => f.title && hk && normalize(f.title) === hk);
+      if (match) { field = match; if (!buf.has(field.key)) buf.set(field.key, []); continue; }
+      if (!field) { if (strip(line)) unplaced.push(line); continue; }
+      if (!buf.has(field.key)) buf.set(field.key, []);
+      buf.get(field.key).push(line);
+    }
+    const filled = [];
+    for (const p of schema.parts) {
+      for (const f of p.fields) if (buf.has(f.key)) {
+        form.prose[f.key] = restoreSubHeads(rstrip(stripNL(buf.get(f.key).join("\n"))), f.subHeads);
+        filled.push(f.label);
+      }
+      if ((p.kind === "var" || p.kind === "lore") && raw.has(p.title)) {
+        const blocks = splitBlocks(raw.get(p.title), p.kind, p.groups.map((g) => g.title)).map(([, b]) => b);
+        if (blocks.length) { form.blocks[p.title] = blocks; filled.push(`${p.title} ${blocks.length}개`); }
+      }
+      if (p.kind === "cards" && (cards.get(p.title) || []).length) {
+        const parsed = cards.get(p.title).map(([name, secs]) => {
+          const card = defaultCard(p, name);
+          for (const f of p.cardFields) if (secs.has(f.title)) card.sections[f.title] = restoreSubHeads(rstrip(stripNL(secs.get(f.title).join("\n"))), f.subHeads);
+          return card;
+        });
+        form.cards[p.title] = parsed;
+        filled.push(`${p.title} 카드 ${parsed.length}장`);
+      }
+    }
+    return { form, filled, unplaced, notes: [...new Set(notes)] };
+  }
+
+  function isPlaceholderLine(line, next) {
+    let s = strip(line);
+    s = strip(s.replace(/^#+/, ""));
+    while (s && BULLETS.includes(s[0])) s = s.slice(1);
+    s = strip(s);
+    if (!s) return false;
+    if (s.endsWith(":") && (next.startsWith(" ") || next.startsWith("\t"))) return false;
+    return [":", "=", "!"].some((e) => s.endsWith(e)) || s.includes(": /") || s.includes("= /") || s.startsWith("(")
+      || /[:\]]\s*\(/.test(s) || (s.endsWith(")") && s.includes("(") && len(s) <= 40)
+      || /^\d+\.\s*트리거:\s*!?$/.test(s);
+  }
+
+  function checkForm(schema, form, text, owner) {
+    const items = [];
+    const empty = [];
+    for (const p of schema.parts) for (const f of p.fields) if (!strip(form.prose[f.key] ?? "")) empty.push(f.label);
+    for (const p of schema.parts) if (p.kind === "cards") {
+      const cards = (form.cards && form.cards[p.title]) || [];
+      if (!cards.length && !p.optional) items.push(item(WARN, `'${p.title}' 카드가 한 장도 없습니다`, "카드를 추가해 주세요."));
+      for (const card of cards) for (const f of p.cardFields) if (!strip(card.sections[f.title] ?? "")) empty.push(cardFieldLabel(card, f));
+    }
+    if (empty.length) items.push(item(WARN, `비어 있는 칸이 ${empty.length}개 있습니다`, empty.join(", ")));
+    const lines = splitlines(text);
+    const left = new Map();
+    lines.forEach((line, i) => {
+      const next = i + 1 < lines.length ? lines[i + 1] : "";
+      if (schema.lines.has(strip(line)) && isPlaceholderLine(line, next)) {
+        const who = owner[i] ?? "?";
+        if (!left.has(who)) left.set(who, []);
+        left.get(who).push(strip(line));
+      }
+    });
+    if (left.size) {
+      const total = [...left.values()].reduce((a, r) => a + r.length, 0);
+      const detail = [...left].map(([who, rows]) => `· ${who}: ${Array.from(rows[0]).slice(0, 30).join("")}` + (rows.length > 1 ? ` 외 ${rows.length - 1}줄` : "")).join("\n");
+      items.push(Object.assign(item(WARN, `아직 채우지 않은 템플릿 안내 문구가 ${total}줄 있습니다`, detail), { left }));
+    }
+    return items;
+  }
+
+  function labelLineNumbers(detail, owner) {
+    return detail.replace(/((?:\d+, )*\d+)번째 줄/g, (m0, g1) => {
+      const whos = [...new Set(g1.match(/\d+/g).map(Number).filter((n) => n > 0 && n <= owner.length).map((n) => owner[n - 1]))];
+      return whos.length ? whos.map((w) => `'${w}'`).join(", ") + " 칸" : m0;
+    });
+  }
+
+  return { PASS, WARN, FAIL, INFO, len, fmt, recommendedLine, normalize, splitlines, parseMdSections, matchingSections, countChars, fieldAliases,
+           runChecks, checkTotalLength, settingSize, tokenText, buildSchema, defaultForm, defaultCard, cardLabel, cardFieldLabel, cardSections, groupOf,
+           assemble, buildSourceForm, fillFromText, checkForm, labelLineNumbers, blockText, MD_HEADER };
+})();
+if (typeof module !== "undefined") module.exports = Engine;
+</script>
+<script>
+(() => {
+  const E = Engine;
+  const BUILTIN_RAW = JSON.parse(document.getElementById("rules-data").textContent);
+  const BUILTIN = BUILTIN_RAW.template ? { "1인": BUILTIN_RAW } : BUILTIN_RAW;  // 모드별 기본 규칙 (예전 형식도 받음)
+  const MODES = Object.keys(BUILTIN);
+  const MODE_KEY = "melloy-writer:mode";
+  // 1인 모드는 예전 저장 이름을 그대로 써서, 이미 쓰던 작업이 이어집니다.
+  const modeKey = (base) => (S.mode === "1인" ? base : `${base}:${S.mode}`);
+  const STORE = () => modeKey("melloy-writer:v1"), BACKUP = () => modeKey("melloy-writer:backup"), RULES = () => modeKey("melloy-writer:rules");
+
+  // ── 저장소 (막혀 있어도 페이지는 동작) ──
+  const store = {
+    get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
+    del(k) { try { localStorage.removeItem(k); } catch {} },
+  };
+
+  // ── 상태 ──
+  const S = { mode: "1인", rules: null, schema: null, form: null, view: { kind: "home" }, text: "", owner: [], issues: [], left: new Map(),
+              empty: new Set(), savedAt: null, saveOk: true, source: null };
+
+  function loadRules() {
+    const custom = store.get(RULES());
+    const base = BUILTIN[S.mode] || BUILTIN[MODES[0]];
+    S.rules = { template: custom?.template || base.template, config: custom?.config || base.config,
+                custom: Boolean(custom), templateName: custom?.templateName || "", configName: custom?.configName || "" };
+    S.schema = E.buildSchema(S.rules.template, S.rules.config);
+  }
+  const cardParts = () => S.schema.parts.filter((p) => p.kind === "cards");
+  function serialForm(form) { return { prose: form.prose, blocks: form.blocks, cards: form.cards }; }
+  /** 저장해 둔 작업을 지금 양식 위에 얹습니다. (카드는 새 번호를 붙여 다시 만듭니다) */
+  function formFromSaved(saved) {
+    const form = E.defaultForm(S.schema);
+    Object.assign(form.prose, saved.prose);
+    for (const k of Object.keys(form.blocks)) if (Array.isArray(saved.blocks?.[k])) form.blocks[k] = saved.blocks[k];
+    for (const p of cardParts()) if (Array.isArray(saved.cards?.[p.title]))
+      form.cards[p.title] = saved.cards[p.title].map((c) => Object.assign(E.defaultCard(p, c.name ?? ""), { sections: { ...E.defaultCard(p).sections, ...(c.sections || {}) } }));
+    return form;
+  }
+  function validForm(f) { return f && typeof f.prose === "object" && typeof f.blocks === "object"; }
+
+  // ── 도구 ──
+  const $ = (id) => document.getElementById(id);
+  function h(tag, props = {}, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(props || {})) {
+      if (v == null || v === false) continue;
+      if (k === "class") el.className = v;
+      else if (k === "text") el.textContent = v;
+      else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+      else if (k in el && typeof v !== "string") el[k] = v;
+      else el.setAttribute(k, v === true ? "" : v);
+    }
+    for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+    return el;
+  }
+  const fmt = E.fmt;
+  const now = () => new Date();
+  const hhmm = (d) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const stamp = (d) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}_${hhmm(d).replace(":", "")}`;
+
+  const realCards = () => cardParts().filter((p) => !p.optional).flatMap((p) => (S.form.cards[p.title] || []).map((c) => E.cardLabel(c)))
+    .filter((n) => n && !n.startsWith("(") && n !== "(이름 없음)");
+  function charName() {
+    if (cardParts().length) {
+      const names = realCards();
+      return names.length ? names.join(" · ") : "";
+    }
+    for (const p of S.schema.parts) for (const f of p.fields) if (!f.title) {
+      const m = (S.form.prose[f.key] || "").match(/\[([^\]\n]+?)\s+CHARACTER PROFILE\]/i);
+      if (m && m[1].trim() && m[1].trim() !== "캐릭터명") return m[1].trim();
+    }
+    return "";
+  }
+
+  // ── 이동 대상 ──
+  function targets() {
+    const list = [];
+    for (const p of S.schema.parts) {
+      if (p.kind === "prose") p.fields.forEach((f) => list.push({ kind: "field", key: f.key, label: f.label, part: p.title }));
+      else if (p.kind === "cards") (S.form.cards[p.title] || []).forEach((c) => list.push({ kind: "card", part: p.title, uid: c.uid, label: E.cardLabel(c) }));
+      else list.push({ kind: "blocks", part: p.title, label: p.title });
+    }
+    return list;
+  }
+  function targetOfOwner(who) {
+    for (const p of S.schema.parts) {
+      if (p.kind === "prose") {
+        const f = p.fields.find((x) => x.label === who);
+        if (f) return { kind: "field", key: f.key };
+        if (who === p.title && p.fields[0]) return { kind: "field", key: p.fields[0].key };
+      } else if (p.kind === "cards") {
+        const c = (S.form.cards[p.title] || []).find((c) => who === E.cardLabel(c) || who.startsWith(E.cardLabel(c) + " › "));
+        if (c) return { kind: "card", part: p.title, uid: c.uid };
+      } else if (who === p.title || who.startsWith(p.title + " ") || (p.kind === "var" && who.startsWith("변수 "))) {
+        return { kind: "blocks", part: p.title };
+      }
+    }
+    return null;
+  }
+  const sameTarget = (a, b) => a && b && a.kind === b.kind
+    && (a.kind === "field" ? a.key === b.key : a.kind === "card" ? a.uid === b.uid : a.part === b.part);
+  const findCard = (t) => (S.form.cards[t.part] || []).find((c) => c.uid === t.uid);
+
+  // ── 계산 ──
+  function recompute() {
+    [S.text, S.owner] = E.assemble(S.schema, S.form);
+    const cfg = S.rules.config;
+    const raw = E.runChecks(S.text, cfg, S.rules.template).flatMap(([, items]) => items).filter((i) => i.status === E.WARN || i.status === E.FAIL);
+    const formItems = E.checkForm(S.schema, S.form, S.text, S.owner);
+    S.left = formItems.find((i) => i.left)?.left || new Map();
+    S.empty = new Set();
+    for (const p of S.schema.parts) for (const f of p.fields) if (!(S.form.prose[f.key] || "").trim()) S.empty.add(f.label);
+    for (const p of cardParts()) for (const c of S.form.cards[p.title] || [])
+      for (const f of p.cardFields) if (!(c.sections[f.title] || "").trim()) S.empty.add(E.cardFieldLabel(c, f));
+    S.cardSizes = new Map();
+    if (cfg["카드_항목"]) {
+      const secs = E.parseMdSections(S.text);
+      for (const p of cardParts()) {
+        const sizes = E.cardSections(secs, cfg, p.title)[1].map((c) => E.countChars(c.body, true));
+        (S.form.cards[p.title] || []).forEach((c, i) => S.cardSizes.set(c.uid, sizes[i] ?? 0));
+      }
+    }
+    S.issues = [...raw, ...formItems].map((i) => {
+      const owners = new Set();
+      for (const m of i.detail.matchAll(/((?:\d+, )*\d+)번째 줄/g))
+        for (const n of m[1].match(/\d+/g).map(Number)) if (n > 0 && n <= S.owner.length) owners.add(S.owner[n - 1]);
+      if (i.left) for (const who of i.left.keys()) owners.add(who);
+      return { ...i, detail: E.labelLineNumbers(i.detail, S.owner), owners: [...owners] };
+    }).sort((a, b) => (a.status === E.FAIL ? 0 : 1) - (b.status === E.FAIL ? 0 : 1));
+  }
+  function statusOf(t) {
+    let st = "ok";
+    for (const i of S.issues) {
+      if (!i.owners.some((who) => sameTarget(targetOfOwner(who), t))) continue;
+      if (i.left && t.kind === "field") continue;  // 남은 안내 문구는 아래에서 따로 셈
+      if (i.status === E.FAIL) return "fail";
+      st = "warn";
+    }
+    if (t.kind === "field") {
+      const f = S.schema.parts.flatMap((p) => p.fields).find((x) => x.key === t.key);
+      if (S.empty.has(f.label)) return "empty";
+      if (S.left.has(f.label)) return "warn";
+    }
+    if (t.kind === "card") {
+      const p = S.schema.parts.find((x) => x.title === t.part), c = findCard(t);
+      if (c) {
+        const labels = p.cardFields.map((f) => E.cardFieldLabel(c, f));
+        if (labels.every((l) => S.empty.has(l))) return "empty";
+        if (st === "ok" && labels.some((l) => S.empty.has(l) || S.left.has(l))) return "warn";
+      }
+    }
+    return st;
+  }
+
+  // ── 저장 ──
+  let saveTimer = null, checkTimer = null;
+  function changed() {
+    clearTimeout(saveTimer); clearTimeout(checkTimer);
+    saveTimer = setTimeout(save, 600);
+    checkTimer = setTimeout(() => { recompute(); renderMeters(); renderNav(); renderDraftMeta(); S.onRecompute?.(); }, 300);
+  }
+  function save() {
+    S.saveOk = store.set(STORE(), { form: serialForm(S.form), savedAt: Date.now(), source: S.source });
+    if (S.saveOk) S.savedAt = now();
+    renderDraftMeta();
+  }
+  function replaceForm(form, source, message) {
+    const prev = store.get(STORE());
+    if (prev) store.set(BACKUP(), prev);
+    S.form = form; S.source = source || null;
+    save(); recompute(); go({ kind: "home" });
+    if (message !== false) toast(message || "바꿨습니다.", prev ? { label: "되돌리기", run: restoreBackup } : null);
+  }
+  function loadDraft() {
+    const saved = store.get(STORE());
+    if (saved && validForm(saved.form)) {
+      S.form = formFromSaved(saved.form);
+      S.source = saved.source || null;
+      S.savedAt = saved.savedAt ? new Date(saved.savedAt) : null;
+    } else {
+      S.form = E.defaultForm(S.schema);
+      S.source = null; S.savedAt = null;
+    }
+  }
+  function switchMode(mode) {
+    if (mode === S.mode || !MODES.includes(mode)) return;
+    clearTimeout(saveTimer); save();          // 지금 모드의 작업을 먼저 저장
+    S.mode = mode;
+    store.set(MODE_KEY, mode);
+    try { loadRules(); } catch { store.del(RULES()); loadRules(); }
+    loadDraft();
+    recompute(); go({ kind: "home" });
+    toast(`${mode} 모드로 바꿨습니다. 모드마다 작업이 따로 저장됩니다.`);
+  }
+  function restoreBackup() {
+    const b = store.get(BACKUP());
+    if (!b || !validForm(b.form)) { toast("되살릴 이전 작업이 없습니다."); return; }
+    const cur = store.get(STORE());
+    S.form = formFromSaved(b.form); S.source = b.source || null;
+    if (cur) store.set(BACKUP(), cur);
+    save(); recompute(); go({ kind: "home" }); toast("이전 작업을 되살렸습니다.");
+  }
+
+  // ── 화면: 목차 ──
+  function renderDraftMeta() {
+    const el = $("draft-meta");
+    if (!el) return;
+    el.replaceChildren(
+      h("span", { text: S.saveOk ? (S.savedAt ? `이 기기에 자동 저장됨 · ${hhmm(S.savedAt)}` : "이 기기에 자동 저장됩니다") : "자동 저장이 막혀 있습니다. 내보내기로 따로 보관하세요." }),
+      h("span", { text: `${S.mode} 모드 · ` + (S.rules.custom ? "내가 바꾼 규칙 사용 중" : "기본 규칙 사용 중") }));
+  }
+  function renderNav() {
+    const nav = $("nav");
+    const name = charName();
+    const kids = [
+      h("div", { class: "draft" },
+        h("p", { class: "draft-name", text: name || (cardParts().length ? "이름 없는 작품" : "이름 없는 캐릭터") }),
+        h("button", { class: "mode-pill", type: "button", onclick: openModes, text: `${S.mode} 모드 · 바꾸기` }),
+        h("div", { class: "draft-meta", id: "draft-meta" })),
+      h("div", { class: "quick-home" },
+        h("button", { class: "btn primary", type: "button", onclick: openPaste, text: "원자료 붙여넣기" }),
+        h("button", { class: "btn", type: "button", onclick: () => $("file-source").click(), text: "파일 불러오기" }),
+        h("button", { class: "btn", type: "button", onclick: openExport, text: "내보내기" })),
+      sizeBox(),
+    ];
+    for (const p of S.schema.parts) {
+      const list = h("ul", { class: "items" });
+      const add = (t, label, sub) => {
+        const st = statusOf(t);
+        list.append(h("li", {}, h("button", { class: "nav-item", type: "button", "aria-current": sameTarget(S.view, t) ? "true" : "false",
+          onclick: () => go(t) },
+          h("span", { class: `dot ${st === "empty" ? "" : st}`, "aria-hidden": "true" }),
+          h("span", { class: "name" }, label, h("span", { class: "sub", text: sub })),
+          h("span", { class: "tnum", text: t.kind === "field" ? fmt(E.len((S.form.prose[t.key] || "").trim())) : "" }))));
+      };
+      if (p.kind === "cards") {
+        const limit = Math.trunc(Number(S.rules.config["카드_글자수"]?.["최대"] ?? 5000));
+        (S.form.cards[p.title] || []).forEach((c) => {
+          const t = { kind: "card", part: p.title, uid: c.uid };
+          const st = statusOf(t);
+          const left = p.cardFields.reduce((a, f) => a + (S.left.get(E.cardFieldLabel(c, f))?.length || 0), 0);
+          const sub = st === "empty" ? "비어 있음" : st === "fail" ? "고칠 곳 있음" : left ? `안내 문구 ${left}줄 남음` : "";
+          add(t, E.cardLabel(c), sub);
+          const n = S.cardSizes.get(c.uid) || 0;
+          const num = list.lastChild.querySelector(".tnum");
+          num.textContent = fmt(n);
+          if (n > limit) num.style.color = "var(--fail)";
+        });
+        list.append(h("li", {}, h("button", { class: "nav-item add-row", type: "button", onclick: () => addCard(p) },
+          h("span", { class: "dot", "aria-hidden": "true" }),
+          h("span", { class: "name" }, p.optional ? `+ ${p.title} 카드 추가` : "+ 카드 추가",
+            p.optional && !(S.form.cards[p.title] || []).length ? h("span", { class: "sub", text: "없으면 비워 두세요" }) : null),
+          h("span"))));
+      }
+      else if (p.kind === "prose") p.fields.forEach((f) => {
+        const t = { kind: "field", key: f.key };
+        const st = statusOf(t);
+        const sub = st === "empty" ? "비어 있음" : S.left.has(f.label) ? `안내 문구 ${S.left.get(f.label).length}줄 남음` : st === "fail" ? "고칠 곳 있음" : "";
+        add(t, f.label, sub);
+      });
+      else {
+        const n = (S.form.blocks[p.title] || []).length;
+        add({ kind: "blocks", part: p.title }, p.title, p.groups.map((g) => `${g.title} ${(S.form.blocks[p.title] || []).filter((b) => E.groupOf(p, b) === g).length}`).join(" · "));
+        list.lastChild.querySelector(".tnum").textContent = `${n}개`;
+      }
+      kids.push(h("div", { class: "part" }, h("p", { class: "part-title", text: p.title }), list));
+    }
+    nav.replaceChildren(...kids);
+    renderDraftMeta();
+  }
+
+  // ── 설정 크기 (MELLOY 표시처럼 세계관 / 주연 / 조연 / 로어북) ──
+  function sizeBox() {
+    const cfg = S.rules.config;
+    if (!cfg["합계_제한"] || typeof cfg["합계_제한"] !== "object") return null;
+    const t = E.checkTotalLength(E.parseMdSections(S.text), cfg)[0];
+    const state = t.status === E.FAIL ? "fail" : t.status === E.WARN ? "warn" : "";
+    const rows = t.sizes.map((p) => {
+      const extra = [p.note, p.actual > p.used ? `실제 ${fmt(p.actual)}` : ""].filter(Boolean).join(" · ");
+      return h("li", {}, h("span", {}, p.label, extra ? h("small", { text: extra }) : null), h("span", { class: "tnum", text: fmt(p.used) }));
+    });
+    return h("section", { class: `size-box ${state}`, "aria-label": "설정 크기" },
+      h("div", { class: "size-head" }, h("span", { text: "설정 크기" }),
+        h("span", { class: "tnum" }, h("b", { text: `${fmt(t.total)}자` }))),
+      t.tokens ? h("p", { class: "size-tokens", text: `${t.tokens} (추정)` }) : null,
+      h("ul", { class: "size-rows" }, ...rows),
+      h("p", { class: "size-foot", text: `권장 ${fmt(t.recommended)}자 · 최대 ${fmt(t.maximum)}자` }));
+  }
+
+  // ── 카드 관리 ──
+  function addCard(p) {
+    const c = E.defaultCard(p);
+    (S.form.cards[p.title] = S.form.cards[p.title] || []).push(c);
+    changed(); recompute(); go({ kind: "card", part: p.title, uid: c.uid });
+    toast("카드를 추가했습니다. 이름부터 바꿔 주세요.");
+  }
+  function moveCard(p, c, step) {
+    const cards = S.form.cards[p.title], i = cards.indexOf(c), j = i + step;
+    if (j < 0 || j >= cards.length) return;
+    [cards[i], cards[j]] = [cards[j], cards[i]];
+    changed(); recompute(); go({ kind: "card", part: p.title, uid: c.uid });
+  }
+  function deleteCard(p, c) {
+    S.form.cards[p.title].splice(S.form.cards[p.title].indexOf(c), 1);
+    changed(); recompute(); go({ kind: "home" }); toast(`'${E.cardLabel(c)}' 카드를 지웠습니다.`);
+  }
+
+  // ── 화면: 칸 편집 ──
+  function renderEditor() {
+    const ed = $("editor");
+    const v = S.view;
+    if (v.kind === "home") {
+      ed.replaceChildren(h("div", { class: "ed-head" },
+        h("span", { class: "ed-crumb", text: "시작하기" }),
+        h("h2", { class: "ed-title", text: "왼쪽 목록에서 칸을 고르세요" })),
+        h("p", { class: "muted", text: "칸마다 자연어로 쓰면, 내보낼 때 템플릿 양식(# 제목, [변수 이름], N. 트리거:)이 자동으로 붙습니다." }));
+      return;
+    }
+    const list = targets();
+    const idx = list.findIndex((t) => sameTarget(t, v));
+    const pager = h("div", { class: "pager" },
+      h("button", { class: "btn quiet", type: "button", disabled: idx <= 0, onclick: () => go(list[idx - 1]), text: "‹ 이전 칸" }),
+      h("button", { class: "btn quiet", type: "button", disabled: idx >= list.length - 1, onclick: () => go(list[idx + 1]), text: "다음 칸 ›" }));
+    if (v.kind === "field") {
+      const f = S.schema.parts.flatMap((p) => p.fields).find((x) => x.key === v.key);
+      const count = h("span", { class: "tnum" });
+      const upd = () => { count.textContent = `${fmt(E.len(ta.value.trim()))}자`; };
+      const ta = h("textarea", { class: "field", id: "field-" + encodeURIComponent(f.key), spellcheck: false, "aria-label": f.label,
+        oninput: () => { S.form.prose[f.key] = ta.value; upd(); changed(); } });
+      ta.value = S.form.prose[f.key] ?? "";
+      upd();
+      ed.replaceChildren(
+        h("div", { class: "ed-head" }, h("span", { class: "ed-crumb", text: f.part }), h("h2", { class: "ed-title", text: f.label })),
+        f.guide ? h("details", { class: "guide" }, h("summary", { text: "템플릿 안내 보기" }), h("pre", { text: f.guide })) : null,
+        ta, h("div", { class: "ed-foot" }, count, pager));
+      return;
+    }
+    if (v.kind === "card") {
+      const part = S.schema.parts.find((p) => p.title === v.part), c = findCard(v);
+      if (!c) { go({ kind: "home" }); return; }
+      const cards = S.form.cards[part.title], i = cards.indexOf(c);
+      const limit = Math.trunc(Number(S.rules.config["카드_글자수"]?.["최대"] ?? 5000));
+      const [goal, goalName] = E.recommendedLine({ "최대": limit, ...(S.rules.config["카드_글자수"] || {}) }, S.rules.config);
+      const size = h("span", { class: "tnum" });
+      const updSize = () => {
+        const n = S.cardSizes.get(c.uid) || 0;
+        size.textContent = `카드 ${fmt(n)} / ${fmt(limit)}자` + ` (${goalName} ${fmt(goal)})`;
+        size.style.color = n > limit ? "var(--fail)" : goal && n > goal ? "var(--warn)" : "";
+      };
+      updSize();
+      S.onRecompute = updSize;
+      const title = h("h2", { class: "ed-title", text: E.cardLabel(c) });
+      const nameInput = h("input", { class: "input", id: `card-${c.uid}-name`, value: c.name, placeholder: "이름 (한자 / 로마자)",
+        oninput: () => { c.name = nameInput.value.trim(); title.textContent = E.cardLabel(c); $("top-title").textContent = E.cardLabel(c); changed(); } });
+      const actions = h("div", { class: "card-actions" });
+      const delBtn = h("button", { class: "btn quiet", type: "button", text: "카드 지우기", onclick: () => actions.replaceChildren(h("div", { class: "confirm-row" },
+        h("span", { text: `'${E.cardLabel(c)}' 카드를 내용째 지울까요?` }),
+        h("button", { class: "btn danger", type: "button", text: "지우기", onclick: () => deleteCard(part, c) }),
+        h("button", { class: "btn quiet", type: "button", text: "취소", onclick: () => renderEditor() }))) });
+      actions.append(
+        h("button", { class: "btn quiet", type: "button", text: "▲ 앞으로", disabled: i <= 0, onclick: () => moveCard(part, c, -1) }),
+        h("button", { class: "btn quiet", type: "button", text: "▼ 뒤로", disabled: i >= cards.length - 1, onclick: () => moveCard(part, c, 1) }),
+        delBtn);
+      const kids = [h("div", { class: "ed-head" }, h("span", { class: "ed-crumb", text: `${part.title} · ${i + 1}/${cards.length}` }), title),
+        h("label", { class: "tag" }, h("span", { class: "tag-name" }, "카드 이름", size), nameInput),
+        part.notes.length ? h("details", { class: "guide" }, h("summary", { text: "카드 작성 메모" }), h("pre", { text: part.notes.map((n) => n.trim()).join("\n") })) : null];
+      for (const f of part.cardFields) {
+        const cnt = h("span", { class: "tnum" });
+        const area = h("textarea", { class: "area tall", id: `card-${c.uid}-${f.title}`, spellcheck: false, "aria-label": f.title });
+        area.value = c.sections[f.title] ?? "";
+        const upd = () => { cnt.textContent = `${fmt(E.len(area.value.trim()))}자`; };
+        area.addEventListener("input", () => { c.sections[f.title] = area.value; upd(); changed(); });
+        upd();
+        const guide = [f.guide, f.notes.map((n) => n.trim()).join("\n")].filter(Boolean).join("\n\n");
+        kids.push(h("section", { class: "card-sec" },
+          h("div", { class: "tag-name" }, h("b", { text: f.title || "머리말" }), cnt),
+          guide ? h("details", { class: "guide" }, h("summary", { text: "템플릿 안내 보기" }), h("pre", { text: guide })) : null,
+          area));
+      }
+      kids.push(actions, h("div", { class: "ed-foot" }, h("span"), pager));
+      ed.replaceChildren(...kids);
+      return;
+    }
+    const part = S.schema.part ? S.schema.part(v.part) : S.schema.parts.find((p) => p.title === v.part);
+    const blocks = S.form.blocks[part.title] || (S.form.blocks[part.title] = []);
+    const limit = Math.trunc(Number(S.rules.config["변수_검사"]?.["변수_내용_최대"] ?? 200));
+    const kids = [h("div", { class: "ed-head" }, h("span", { class: "ed-crumb", text: "구조 칸" }), h("h2", { class: "ed-title", text: part.title })),
+      h("p", { class: "muted", text: part.kind === "var" ? "[변수 이름] 이름 / 종류, [태그] 표시는 내보낼 때 자동으로 붙습니다." : "'N. 트리거:' 번호와 [태그] 표시는 내보낼 때 자동으로 붙습니다." })];
+    for (const g of part.groups) {
+      kids.push(h("h3", { class: "group-title", text: g.title }));
+      blocks.filter((b) => E.groupOf(part, b) === g).forEach((b) => kids.push(blockCard(part, g, b, limit)));
+      kids.push(h("div", {}, h("button", { class: "btn", type: "button", text: `+ ${g.title} 추가`, onclick: () => {
+        const nb = { group: g.kind, name: "", values: Object.fromEntries(g.tags.map((t) => [t, ""])) };
+        const last = blocks.map((b) => E.groupOf(part, b) === g).lastIndexOf(true);
+        blocks.splice(last < 0 ? blocks.length : last + 1, 0, nb);
+        changed(); renderEditor();
+        const cards = $("editor").querySelectorAll(".card input");
+        toast(`${g.title}을(를) 추가했습니다.`);
+        cards.length && cards[[...cards].findIndex((c) => c.dataset.block === String(blocks.indexOf(nb)))]?.focus();
+      } })));
+    }
+    kids.push(h("div", { class: "ed-foot" }, h("span"), pager));
+    ed.replaceChildren(...kids);
+  }
+
+  function blockCard(part, g, b, limit) {
+    const blocks = S.form.blocks[part.title];
+    const bi = String(blocks.indexOf(b));
+    const nameInput = h("input", { class: "input", id: `blk-${part.title}-${bi}-name`, value: b.name, "data-block": bi,
+      placeholder: part.kind === "var" ? "공백 없이 (예: 최근사건)" : "예: !요약",
+      oninput: () => { b.name = nameInput.value.trim(); changed(); } });
+    const head = [h("label", { class: "tag" }, h("span", { class: "tag-name", text: part.kind === "var" ? "변수 이름" : "트리거" }), nameInput)];
+    if (part.kind === "var") {
+      const kinds = part.groups.map((x) => x.kind);
+      if (!kinds.includes(b.group)) kinds.push(b.group);
+      const sel = h("select", { class: "input", id: `blk-${part.title}-${bi}-kind`, "aria-label": "종류",
+        onchange: () => { b.group = sel.value; changed(); renderEditor(); } }, kinds.map((k) => h("option", { value: k, text: k || "(없음)" })));
+      sel.value = b.group;
+      head.push(h("label", { class: "tag" }, h("span", { class: "tag-name", text: "종류" }), sel));
+    }
+    const tags = [...g.tags, ...Object.keys(b.values).filter((t) => !g.tags.includes(t))];
+    const fields = tags.map((tag) => {
+      const val = b.values[tag] ?? "";
+      const id = `blk-${part.title}-${bi}-${tag}`;
+      if (g.short.has(tag) && !val.includes("\n")) {
+        const inp = h("input", { class: "input", id, value: val, oninput: () => { b.values[tag] = inp.value; changed(); } });
+        return h("label", { class: "tag" }, h("span", { class: "tag-name", text: `[${tag}]` }), inp);
+      }
+      const cnt = h("span", { class: "tnum" });
+      const area = h("textarea", { class: "area", id, spellcheck: false, rows: g.multiline.has(tag) ? 5 : 3 });
+      area.value = val;
+      const upd = () => {
+        const rows = area.value.split("\n");
+        const n = tag === "구간별 행동" ? Math.max(0, ...rows.map((r) => E.len(r.trim()))) : E.len(area.value.trim());
+        cnt.textContent = (tag === "구간별 행동" ? "한 줄 최대 " : "") + `${fmt(n)}자`;
+        cnt.className = "tnum" + (part.kind === "var" && n > limit ? " over" : "");
+      };
+      area.addEventListener("input", () => { b.values[tag] = area.value; upd(); changed(); });
+      upd();
+      return h("label", { class: "tag" }, h("span", { class: "tag-name" }, `[${tag}]`, cnt), area);
+    });
+    const actions = h("div", { class: "card-actions" });
+    const askDelete = () => actions.replaceChildren(h("div", { class: "confirm-row" },
+      h("span", { text: `'${b.name || "이름 없음"}'을(를) 지울까요?` }),
+      h("button", { class: "btn danger", type: "button", text: "지우기", onclick: () => {
+        blocks.splice(blocks.indexOf(b), 1); changed(); renderEditor(); toast("지웠습니다."); } }),
+      h("button", { class: "btn quiet", type: "button", text: "취소", onclick: () => actions.replaceChildren(delBtn) })));
+    const delBtn = h("button", { class: "btn quiet", type: "button", text: "지우기", onclick: askDelete });
+    actions.append(delBtn);
+    return h("div", { class: "card" }, h("div", { class: part.kind === "var" ? "card-head" : "" }, ...head), ...fields, actions);
+  }
+
+  // ── 아래 계기판 ──
+  function renderMeters() {
+    const cfg = S.rules.config, secs = E.parseMdSections(S.text);
+    const meters = [];
+    for (const rule of cfg["글자수_제한"] || []) {
+      const field = rule["필드"] ?? "?", limit = Math.trunc(Number(rule["최대"] ?? 0));
+      const n = E.matchingSections(secs, [field, ...(rule["별칭"] || [])]).reduce((a, s) => a + E.countChars(s.body, true), 0);
+      const [rec] = E.recommendedLine(rule, cfg);
+      meters.push({ label: field, n, max: limit, mark: rec, state: n > limit ? "fail" : n > rec ? "warn" : "" });
+    }
+    if (cfg["카드_항목"]) {
+      const rule = { "최대": 5000, ...(cfg["카드_글자수"] || {}) };
+      const limit = Math.trunc(Number(rule["최대"])), [goal] = E.recommendedLine(rule, cfg);
+      const all = [...E.cardSections(secs, cfg)[1], ...(cfg["조연_항목"] ? E.cardSections(secs, cfg, cfg["조연_항목"])[1] : [])];
+      const n = Math.max(0, ...all.map((c) => E.countChars(c.body, true)));
+      meters.push({ label: "가장 긴 카드", n, max: limit, mark: goal, state: n > limit ? "fail" : n > goal ? "warn" : "" });
+    }
+    if (cfg["합계_제한"] && typeof cfg["합계_제한"] === "object") {
+      const t = E.checkTotalLength(secs, cfg)[0];
+      meters.push({ label: "설정 크기", n: t.total, max: t.maximum, mark: t.recommended, state: t.status === E.FAIL ? "fail" : t.status === E.WARN ? "warn" : "" });
+    }
+    $("meters").replaceChildren(...meters.slice(0, 3).map((m) => h("div", { class: `meter ${m.state}` },
+      h("div", { class: "meter-label" }, h("span", { text: m.label }),
+        h("span", { class: "tnum" }, h("b", { text: fmt(m.n) }), h("small", { text: "/" + fmt(m.mark || m.max) }))),
+      h("div", { class: "meter-track", role: "meter", "aria-label": m.label, "aria-valuemin": "0", "aria-valuemax": String(m.max), "aria-valuenow": String(m.n) },
+        h("div", { class: "meter-fill", style: `width:${Math.min(100, (m.n / Math.max(1, m.mark || m.max)) * 100)}%` })))));
+    const fails = S.issues.filter((i) => i.status === E.FAIL).length, warns = S.issues.length - fails;
+    const btn = $("issues-btn");
+    btn.className = "issues-btn " + (fails ? "fail" : warns ? "warn" : "ok");
+    btn.textContent = fails ? `점검 ✕${fails} ▲${warns}` : warns ? `점검 ▲${warns}` : "점검 ✓";
+  }
+
+  // ── 이동 ──
+  function go(t) {
+    S.view = t;
+    S.onRecompute = null;
+    document.body.dataset.view = t.kind === "home" ? "home" : "edit";
+    $("back-btn").hidden = t.kind === "home";
+    const label = t.kind === "field" ? S.schema.parts.flatMap((p) => p.fields).find((f) => f.key === t.key)?.label
+      : t.kind === "card" ? E.cardLabel(findCard(t) || { name: "" }) : t.part;
+    $("top-title").replaceChildren(t.kind === "home" ? "MELLOY 캐릭터 작성기" : label || "");
+    renderNav(); renderEditor(); renderMeters();
+    window.scrollTo({ top: 0 });
+  }
+
+  // ── 아래 창 ──
+  function sheet(...kids) {
+    const close = () => scrim.remove();
+    const panel = h("div", { class: "sheet", role: "dialog", "aria-modal": "true" }, ...kids);
+    const scrim = h("div", { class: "scrim", onclick: (e) => { if (e.target === scrim) close(); } }, panel);
+    $("layer").replaceChildren(scrim);
+    panel.querySelector("button, textarea, input")?.focus({ preventScroll: true });
+    return { close, panel };
+  }
+  let toastTimer = null;
+  function toast(msg, action) {
+    clearTimeout(toastTimer);
+    document.querySelector(".toast")?.remove();
+    const t = h("div", { class: "toast", role: "status" }, msg,
+      action ? h("button", { type: "button", text: action.label, onclick: () => { t.remove(); action.run(); } }) : null);
+    document.body.append(t);
+    toastTimer = setTimeout(() => t.remove(), action ? 7000 : 2600);
+  }
+
+  function openMenu() {
+    const s = sheet(h("h2", { text: "메뉴" }), h("div", { class: "menu-list" },
+      menuItem("원자료 붙여넣기", "AI 어시스턴트가 쓴 원자료를 붙여넣어 칸에 채웁니다.", () => { s.close(); openPaste(); }),
+      menuItem("원자료·변환 파일 불러오기", "휴대폰에 저장된 .txt / .md 파일을 엽니다.", () => { s.close(); $("file-source").click(); }),
+      menuItem("내보내기", "변환 파일로 저장하거나 전체를 복사합니다.", () => { s.close(); openExport(); }),
+      menuItem("원자료 양식 받기", "제목에 '#' 이 없는 자연어 양식입니다. AI 어시스턴트에게 주고 이 순서대로 써 달라고 하세요.", () => { s.close(); openSourceForm(); }),
+      h("div", { class: "menu-sep" }),
+      menuItem("새로 작성", "템플릿 안내 문구가 들어 있는 빈 양식으로 시작합니다.", () => { s.close(); confirmSheet("새로 작성할까요?", "지금 내용은 '직전 작업 되살리기'로 한 번 되돌릴 수 있습니다.", "새로 작성", () => replaceForm(E.defaultForm(S.schema), null, "새 양식으로 시작했습니다.")); }),
+      menuItem("직전 작업 되살리기", "붙여넣기·불러오기·새로 작성 바로 전 내용으로 돌아갑니다.", () => { s.close(); restoreBackup(); }),
+      menuItem("모드 바꾸기", `지금 ${S.mode} 모드입니다. 모드마다 작업이 따로 저장됩니다.`, () => { s.close(); openModes(); }),
+      menuItem("규칙 바꾸기", S.rules.custom ? "지금은 내가 바꾼 규칙을 쓰고 있습니다." : "PC판 rules 폴더의 템플릿.md / 검수설정.json 을 넣을 수 있습니다.", () => { s.close(); openRules(); })),
+      h("p", { class: "muted", text: "개인이 만든 작성 도구입니다. 작성 내용은 이 기기의 브라우저에만 저장되고 어디에도 보내지 않습니다." }),
+      h("button", { class: "btn", type: "button", text: "닫기", onclick: () => s.close() }));
+  }
+  function openModes() {
+    const desc = { "1인": "캐릭터 한 명. 등장인물 0. Core ~ 7. 칸 구성", "다인": "다인챗. 설명 필드 9칸 + 인물별 카드 여러 장" };
+    const s = sheet(h("h2", { text: "모드 바꾸기" }),
+      h("p", { class: "muted", text: "모드마다 템플릿·점검 기준이 다르고, 작업도 모드별로 따로 저장됩니다. 지금 작업은 그대로 남습니다." }),
+      h("div", { class: "menu-list" }, ...MODES.map((m) => menuItem(m === S.mode ? `${m} 모드 (지금)` : `${m} 모드`, desc[m] || "",
+        () => { s.close(); switchMode(m); }))),
+      h("button", { class: "btn", type: "button", text: "닫기", onclick: () => s.close() }));
+  }
+  function menuItem(title, sub, run) { return h("button", { type: "button", onclick: run }, h("b", { text: title }), h("span", { text: sub })); }
+  function confirmSheet(title, body, okLabel, run) {
+    const s = sheet(h("h2", { text: title }), h("p", { class: "muted", text: body }),
+      h("div", { class: "quick" }, h("button", { class: "btn primary", type: "button", text: okLabel, onclick: () => { s.close(); run(); } }),
+        h("button", { class: "btn", type: "button", text: "취소", onclick: () => s.close() })));
+  }
+
+  // 불러오기
+  function importText(text, sourceName) {
+    const r = E.fillFromText(S.schema, text, S.rules.config);
+    if (!r.filled.length) {
+      sheet(h("h2", { text: "제목을 찾지 못했습니다" }),
+        h("p", { text: "템플릿의 제목(등장인물, 0. Core 등)이 한 줄에 단독으로 있어야 칸에 나눠 넣을 수 있습니다." }),
+        h("p", { class: "muted", text: "메뉴 › 원자료 양식 받기로 양식을 받아 AI 어시스턴트에게 이 순서대로 써 달라고 하세요." }),
+        h("button", { class: "btn", type: "button", text: "닫기", onclick: () => $("layer").replaceChildren() }));
+      return;
+    }
+    const converted = text.split(/\r?\n/).some((l) => E.MD_HEADER.test(l));
+    replaceForm(r.form, converted ? null : { name: sourceName || "붙여넣은 원자료" }, false);
+    const allFields = S.schema.parts.flatMap((p) => p.fields.map((f) => f.label));
+    const missing = allFields.filter((l) => !r.filled.includes(l));
+    const s = sheet(h("h2", { text: `${r.filled.length}개 칸을 채웠습니다` }),
+      missing.length ? h("p", { class: "muted", text: `원자료에 없어서 템플릿 안내 문구로 남긴 칸: ${missing.join(", ")}` }) : null,
+      ...r.notes.map((n) => h("p", { class: "muted", text: n })),
+      r.unplaced.length ? h("details", { class: "guide" }, h("summary", { text: `제목 아래에 있지 않아 넣지 못한 줄 ${r.unplaced.length}줄` }), h("pre", { text: r.unplaced.join("\n") })) : null,
+      h("div", { class: "quick" }, h("button", { class: "btn primary", type: "button", text: "확인", onclick: () => s.close() }),
+        h("button", { class: "btn", type: "button", text: "되돌리기", onclick: () => { s.close(); restoreBackup(); } })));
+  }
+  function openPaste() {
+    const area = h("textarea", { class: "paste-area", id: "paste-area", placeholder: "여기에 원자료 전체를 붙여넣으세요.\n\n등장인물\n[이름 CHARACTER PROFILE]\n\n0. Core\n- ...", spellcheck: false });
+    const s = sheet(h("h2", { text: "원자료 붙여넣기" }),
+      h("p", { class: "muted", text: "제목 줄(등장인물, 0. Core …)을 찾아 칸에 나눠 넣습니다. 저장해 둔 변환 파일을 붙여넣어도 됩니다." }), area,
+      h("div", { class: "quick" },
+        h("button", { class: "btn primary", type: "button", text: "칸에 채우기", onclick: () => {
+          if (!area.value.trim()) { toast("붙여넣은 내용이 없습니다."); return; }
+          s.close(); importText(area.value, "붙여넣은 원자료"); } }),
+        h("button", { class: "btn", type: "button", text: "취소", onclick: () => s.close() })));
+  }
+  async function readFile(file) {
+    const buf = await file.arrayBuffer();
+    try { return new TextDecoder("utf-8", { fatal: true }).decode(buf).replace(/^﻿/, ""); }
+    catch { try { return new TextDecoder("euc-kr").decode(buf); } catch { return new TextDecoder().decode(buf); } }
+  }
+  $("file-source").addEventListener("change", async (e) => {
+    const file = e.target.files[0]; e.target.value = "";
+    if (!file) return;
+    try { importText(await readFile(file), file.name); } catch { toast("파일을 읽지 못했습니다. 텍스트 파일인지 확인해 주세요."); }
+  });
+
+  // 내보내기
+  let downloads = null, downloadsReady = false;
+  if (window.claude?.use) window.claude.use("downloads").then((d) => { downloads = d; downloadsReady = true; }).catch(() => { downloadsReady = true; });
+  const canSaveFile = () => Boolean(downloads) || !window.claude;
+  async function saveFile(filename, data) {
+    if (downloads) {
+      try { await downloads.save({ filename, data }); toast("파일을 넘겼습니다."); }
+      catch (err) {
+        const code = err?.code;
+        if (code === "declined") toast("저장을 취소했습니다.");
+        else if (code === "rate_limited") toast("이미 열린 저장 창이 있습니다. 잠시 뒤 다시 눌러 주세요.");
+        else toast("이 화면에서는 파일로 저장할 수 없습니다. 전체 복사를 써 주세요.");
+      }
+      return;
+    }
+    // 작성기를 파일이나 다른 사이트로 열었을 때
+    const url = URL.createObjectURL(new Blob([data], { type: "text/plain;charset=utf-8" }));
+    const a = h("a", { href: url, download: filename });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+  async function copyText(text, what) {
+    try { await navigator.clipboard.writeText(text); toast(`${what}을(를) 복사했습니다. 채팅에 붙여넣으세요.`); }
+    catch {
+      const area = h("textarea", { class: "paste-area", id: "copy-area", readonly: true });
+      area.value = text;
+      const s = sheet(h("h2", { text: "직접 복사해 주세요" }),
+        h("p", { class: "muted", text: "이 화면에서는 자동 복사가 막혀 있습니다. 아래 글을 길게 눌러 전체 선택 후 복사하세요." }), area,
+        h("button", { class: "btn", type: "button", text: "닫기", onclick: () => s.close() }));
+      area.select();
+    }
+  }
+  function openExport() {
+    recompute();
+    const name = (S.mode === "1인" ? "" : `${S.mode}_`) + ((charName() || "변환").split(" · ")[0]);
+    const fails = S.issues.filter((i) => i.status === E.FAIL).length;
+    const s = sheet(h("h2", { text: "내보내기" }),
+      h("p", { class: "muted", text: `템플릿 양식으로 만든 변환 파일입니다. 총 ${fmt(E.len(S.text))}자.` + (fails ? ` 점검에서 고칠 곳 ${fails}개가 남아 있습니다.` : "") }),
+      h("div", { class: "quick" },
+        canSaveFile() ? h("button", { class: "btn primary", type: "button", text: "파일로 저장 (.md)", onclick: () => { s.close(); saveFile(`${name}_${stamp(now())}.md`, S.text); } }) : null,
+        h("button", { class: canSaveFile() ? "btn" : "btn primary", type: "button", text: "전체 복사", onclick: () => { s.close(); copyText(S.text, "변환 결과"); } })),
+      h("p", { class: "muted", text: "Claude 앱에서 검수를 맡기려면: 파일로 저장해 첨부하거나, 전체 복사해서 채팅에 붙여넣으세요. PC판 검수 탭에서도 이 파일을 그대로 열 수 있습니다." }),
+      h("button", { class: "btn quiet", type: "button", text: "닫기", onclick: () => s.close() }));
+  }
+  function openSourceForm() {
+    const text = E.buildSourceForm(S.schema);
+    const s = sheet(h("h2", { text: "원자료 양식" }),
+      h("p", { class: "muted", text: "AI 어시스턴트에게 이 양식을 주고 '이 제목 순서대로 원자료를 써 줘'라고 하세요. 받은 글은 [원자료 붙여넣기]로 바로 칸에 채울 수 있습니다." }),
+      h("div", { class: "quick" },
+        h("button", { class: "btn primary", type: "button", text: "양식 복사", onclick: () => { s.close(); copyText(text, "원자료 양식"); } }),
+        canSaveFile() ? h("button", { class: "btn", type: "button", text: "파일로 저장 (.txt)", onclick: () => { s.close(); saveFile(S.mode === "1인" ? "원자료양식.txt" : `원자료양식_${S.mode}.txt`, text); } }) : null),
+      h("details", { class: "guide" }, h("summary", { text: "양식 미리 보기" }), h("pre", { text })),
+      h("button", { class: "btn quiet", type: "button", text: "닫기", onclick: () => s.close() }));
+  }
+
+  // 규칙 바꾸기
+  function openRules() {
+    const s = sheet(h("h2", { text: "규칙 바꾸기" }),
+      h("p", { class: "muted", text: `지금 ${S.mode} 모드의 규칙을 바꿉니다. PC판 ${S.mode === "1인" ? "rules" : "rules/" + S.mode} 폴더의 파일을 넣으면 칸 구성과 점검 기준이 바뀝니다. 이 기기에만 적용됩니다.` }),
+      h("p", { text: `템플릿: ${S.rules.templateName || "기본 템플릿"} · 설정: ${S.rules.configName || "기본 설정"}` }),
+      h("div", { class: "quick" },
+        h("button", { class: "btn", type: "button", text: "템플릿.md 넣기", onclick: () => { s.close(); $("file-template").click(); } }),
+        h("button", { class: "btn", type: "button", text: "검수설정.json 넣기", onclick: () => { s.close(); $("file-config").click(); } }),
+        S.rules.custom ? h("button", { class: "btn danger", type: "button", text: "기본 규칙으로", onclick: () => { s.close(); store.del(RULES()); applyRules("기본 규칙으로 돌아왔습니다."); } }) : null),
+      h("button", { class: "btn quiet", type: "button", text: "닫기", onclick: () => s.close() }));
+  }
+  function applyRules(message) {
+    const text = E.assemble(S.schema, S.form)[0];  // 지금 내용을 새 칸 구성으로 옮겨 담기
+    loadRules();
+    S.form = E.fillFromText(S.schema, text, S.rules.config).form;
+    save(); recompute(); go({ kind: "home" }); toast(message);
+  }
+  $("file-template").addEventListener("change", async (e) => {
+    const file = e.target.files[0]; e.target.value = "";
+    if (!file) return;
+    const text = await readFile(file);
+    try { if (!E.buildSchema(text).parts.length) throw 0; } catch { toast("'# 제목' 으로 된 큰 항목이 없어 템플릿으로 쓸 수 없습니다."); return; }
+    const cur = store.get(RULES()) || {};
+    if (!store.set(RULES(), { ...cur, template: text, templateName: file.name })) { toast("이 기기에 저장할 수 없어 규칙을 바꾸지 못했습니다."); return; }
+    applyRules("템플릿을 바꿨습니다.");
+  });
+  $("file-config").addEventListener("change", async (e) => {
+    const file = e.target.files[0]; e.target.value = "";
+    if (!file) return;
+    let cfg;
+    try { cfg = JSON.parse(await readFile(file)); if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) throw 0; }
+    catch { toast("검수설정 파일을 읽지 못했습니다. 따옴표와 쉼표가 빠지지 않았는지 확인해 주세요."); return; }
+    const cur = store.get(RULES()) || {};
+    if (!store.set(RULES(), { ...cur, config: { ...(BUILTIN[S.mode] || BUILTIN[MODES[0]]).config, ...cfg }, configName: file.name })) { toast("이 기기에 저장할 수 없어 설정을 바꾸지 못했습니다."); return; }
+    applyRules("검수설정을 바꿨습니다.");
+  });
+
+  // 점검 창
+  function openIssues() {
+    recompute();
+    const items = S.issues.map((i) => h("div", { class: `issue ${i.status}` },
+      h("span", { class: "issue-title", text: (i.status === E.FAIL ? "✕ " : "▲ ") + i.title }),
+      i.detail ? h("span", { class: "issue-detail", text: i.detail }) : null,
+      i.owners.length ? h("div", { class: "chips" }, ...[...new Map(i.owners.map((w) => [JSON.stringify(targetOfOwner(w)), w])).entries()]
+        .filter(([k]) => k !== "null").slice(0, 8)
+        .map(([k, w]) => h("button", { class: "chip", type: "button", text: `→ ${JSON.parse(k).kind === "blocks" ? JSON.parse(k).part : w}`, onclick: () => { s.close(); go(JSON.parse(k)); } }))) : null));
+    const s = sheet(h("h2", { text: "실시간 점검" }),
+      h("p", { class: "muted", text: "PC판 기계 검사와 같은 기준입니다. 쓰는 동안 자동으로 갱신됩니다." }),
+      ...(items.length ? items : [h("p", { text: "✓ 걸린 것이 없습니다. 내보내서 검수를 맡겨 보세요." })]),
+      h("button", { class: "btn", type: "button", text: "닫기", onclick: () => s.close() }));
+  }
+
+  // ── 시작 ──
+  $("menu-btn").addEventListener("click", openMenu);
+  $("back-btn").addEventListener("click", () => go({ kind: "home" }));
+  $("issues-btn").addEventListener("click", openIssues);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("layer").replaceChildren(); });
+  // 휴대폰 키보드가 화면을 가리고 있을 때만 아래 계기판을 잠시 숨깁니다
+  const typingTarget = (el) => el && (el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && el.type !== "file")) && !el.closest(".sheet");
+  const updTyping = () => {
+    const vv = window.visualViewport;
+    const keyboard = vv ? vv.height < window.innerHeight * 0.8 : true;
+    document.body.classList.toggle("typing", typingTarget(document.activeElement) && keyboard && matchMedia("(max-width: 899px)").matches);
+  };
+  document.addEventListener("focusin", updTyping);
+  document.addEventListener("focusout", () => setTimeout(updTyping, 0));
+  window.visualViewport?.addEventListener("resize", updTyping);
+
+  const savedMode = store.get(MODE_KEY);
+  S.mode = MODES.includes(savedMode) ? savedMode : MODES[0];
+  try {
+    loadRules();
+  } catch {
+    store.del(RULES());
+    loadRules();
+  }
+  loadDraft();
+  recompute();
+  go({ kind: "home" });
+})();
+</script>
+
+</body>
+</html>
