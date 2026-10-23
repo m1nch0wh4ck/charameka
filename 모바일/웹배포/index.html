@@ -174,6 +174,40 @@ body.typing .meter-bar { display: none; }
   background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-size: 14px; max-width: calc(100% - 32px); }
 .toast button { background: none; border: 0; color: inherit; text-decoration: underline; font-weight: 600; margin-left: 8px; }
 @media (prefers-reduced-motion: reduce) { .meter-fill { transition: none; } }
+
+/* HTML 미리보기: 휴대폰은 입력 → 미리보기 세로로, 넓은 화면은 입력 | 미리보기 두 칸. 목차·계기판·점검은 숨김 */
+.quick-home .wide { grid-column: 1 / -1; }
+body[data-view="preview"] .nav, body[data-view="preview"] .meter-bar, body[data-view="preview"] #issues-btn { display: none !important; }
+body[data-view="preview"] .shell { grid-template-columns: minmax(0, 1fr); max-width: 1600px; }
+body[data-view="preview"] .topbar-inner { max-width: 1600px; }
+@media (min-width: 900px) { body[data-view="preview"] #back-btn { display: inline-block !important; } }
+.pv { display: grid; gap: 14px; }
+.pv-col { display: grid; gap: 12px; align-content: start; min-width: 0; }
+@media (min-width: 1100px) { .pv { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: start; }
+  .pv-view { position: sticky; top: 72px; } }
+.seg-row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); padding: 2px; }
+.seg button { border: 0; background: none; border-radius: 999px; padding: 5px 12px; font-size: 14px; font-weight: 500; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.pv-input { width: 100%; min-height: 32vh; resize: vertical; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 10px 12px; font: 13.5px/1.55 var(--font-data); tab-size: 2; }
+.pv-input:focus { border-color: var(--accent); outline: none; }
+@media (max-width: 899px) { .pv-input, .pv-var .input { font-size: 16px; } }  /* 아이폰에서 입력할 때 화면이 확대되지 않게 */
+.pv-meter .meter-track { position: relative; height: 6px; }
+.pv-mark { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--muted); opacity: 0.6; }
+.pv-msg { margin: 0; font-size: 13.5px; }
+.pv-msg.warn { color: var(--warn); } .pv-msg.fail { color: var(--fail); }
+.pv-vars { display: grid; gap: 8px; }
+.pv-var { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 8px; align-items: center; }
+.pv-var code { font: 12.5px var(--font-data); overflow-wrap: anywhere; }
+.pv-var code small { color: var(--muted); margin-left: 4px; }
+.check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+.pv-stage { height: 70vh; min-height: 240px; resize: vertical; overflow: auto; background: var(--sunken); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 10px; }
+.pv-frame { display: block; height: 100%; margin: 0 auto; border: 1px dashed var(--line); border-radius: 6px; background: #fff; }
+.pv-rule ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); font-size: 13.5px; }
+.pv-rule .chips { margin-top: 4px; }
+.pv-rule .chip { font-family: var(--font-data); font-size: 12px; }
 </style>
 
 <header class="topbar"><div class="topbar-inner">
@@ -1294,7 +1328,8 @@ if (typeof module !== "undefined") module.exports = Engine;
       h("div", { class: "quick-home" },
         h("button", { class: "btn primary", type: "button", onclick: openPaste, text: "원자료 붙여넣기" }),
         h("button", { class: "btn", type: "button", onclick: () => $("file-source").click(), text: "파일 불러오기" }),
-        h("button", { class: "btn", type: "button", onclick: openExport, text: "내보내기" })),
+        h("button", { class: "btn", type: "button", onclick: openExport, text: "내보내기" }),
+        h("button", { class: "btn wide", type: "button", onclick: () => go({ kind: "preview" }), text: "HTML 미리보기 (상태창·소개문)" })),
       sizeBox(),
     ];
     for (const p of S.schema.parts) {
@@ -1383,6 +1418,7 @@ if (typeof module !== "undefined") module.exports = Engine;
   function renderEditor() {
     const ed = $("editor");
     const v = S.view;
+    if (v.kind === "preview") { renderPreview(ed); return; }
     if (v.kind === "home") {
       ed.replaceChildren(h("div", { class: "ed-head" },
         h("span", { class: "ed-crumb", text: "시작하기" }),
@@ -1560,9 +1596,9 @@ if (typeof module !== "undefined") module.exports = Engine;
   function go(t) {
     S.view = t;
     S.onRecompute = null;
-    document.body.dataset.view = t.kind === "home" ? "home" : "edit";
+    document.body.dataset.view = t.kind === "home" || t.kind === "preview" ? t.kind : "edit";
     $("back-btn").hidden = t.kind === "home";
-    const label = t.kind === "field" ? S.schema.parts.flatMap((p) => p.fields).find((f) => f.key === t.key)?.label
+    const label = t.kind === "preview" ? "HTML 미리보기" : t.kind === "field" ? S.schema.parts.flatMap((p) => p.fields).find((f) => f.key === t.key)?.label
       : t.kind === "card" ? E.cardLabel(findCard(t) || { name: "" }) : t.part;
     $("top-title").replaceChildren(t.kind === "home" ? "MELLOY 캐릭터 작성기" : label || "");
     renderNav(); renderEditor(); renderMeters();
@@ -1593,6 +1629,7 @@ if (typeof module !== "undefined") module.exports = Engine;
       menuItem("원자료 붙여넣기", "AI 어시스턴트가 쓴 원자료를 붙여넣어 칸에 채웁니다.", () => { s.close(); openPaste(); }),
       menuItem("원자료·변환 파일 불러오기", "휴대폰에 저장된 .txt / .md 파일을 엽니다.", () => { s.close(); $("file-source").click(); }),
       menuItem("내보내기", "변환 파일로 저장하거나 전체를 복사합니다.", () => { s.close(); openExport(); }),
+      menuItem("HTML 미리보기", "상태창·소개문 HTML을 붙여넣어 폭·배경·변수 값을 바꿔 가며 봅니다.", () => { s.close(); go({ kind: "preview" }); }),
       menuItem("원자료 양식 받기", "제목에 '#' 이 없는 자연어 양식입니다. AI 어시스턴트에게 주고 이 순서대로 써 달라고 하세요.", () => { s.close(); openSourceForm(); }),
       h("div", { class: "menu-sep" }),
       menuItem("새로 작성", "템플릿 안내 문구가 들어 있는 빈 양식으로 시작합니다.", () => { s.close(); confirmSheet("새로 작성할까요?", "지금 내용은 '직전 작업 되살리기'로 한 번 되돌릴 수 있습니다.", "새로 작성", () => replaceForm(E.defaultForm(S.schema), null, "새 양식으로 시작했습니다.")); }),
@@ -1764,6 +1801,171 @@ if (typeof module !== "undefined") module.exports = Engine;
       h("p", { class: "muted", text: "PC판 기계 검사와 같은 기준입니다. 쓰는 동안 자동으로 갱신됩니다." }),
       ...(items.length ? items : [h("p", { text: "✓ 걸린 것이 없습니다. 내보내서 검수를 맡겨 보세요." })]),
       h("button", { class: "btn", type: "button", text: "닫기", onclick: () => s.close() }));
+  }
+
+  // ── HTML 미리보기 (상태창·소개문 조각 HTML을 붙여넣어 바로 렌더링) ──
+  // 칸은 플랫폼 × 종류별로 따로 저장하고 따로 셉니다. 최대는 각 플랫폼 입력 칸 한도, 권장선은 다른 칸처럼 최대 × 권장_비율
+  const PREVIEW_KEY = "melloy-writer:preview";
+  const LUMO_TAGS = {
+    "지원하는 태그": [["구조", "div span p br hr section"], ["글자", "b strong i em u s h1~h6 code"], ["목록·표", "ul ol li table tr th td"], ["접기", "details summary"]],
+    "지원하지 않는 태그": [["링크·입력", "a button form input textarea select label"], ["미디어", "img svg video iframe"], ["코드", "script style"],
+      ["꾸밈", "font center mark small sup sub del"]],
+  };
+  const PV_SLOTS = {
+    "멜로이:상태창": { max: 8000, noUser: true, notes: ["허용 태그만 사용합니다.", "{{user}}는 쓸 수 없습니다 → '유저'로 표기"] },
+    "멜로이:소개문": { max: 30000, notes: ["소개 페이지. JS 전면 금지", "{{user}} 사용 가능"] },
+    "루모:상태창": { max: 30000, tags: true, notes: ["답변 하단에 표시. {{char}} → 캐릭터 이름, {{user}} → 유저(페르소나) 이름으로 바뀝니다.",
+      "style 안의 필드(예: width:{{호감도}}%)도 생성된 값으로 바뀝니다. 필드 설명에 값 형식을 적어 주세요.",
+      "채팅방 색: 지문 hsl(var(--chat-message-text)) / 대사 hsl(var(--chat-dialogue-text)) / 배경 hsl(var(--chat-message-box-background))"] },
+    "루모:소개문": { max: 50000, notes: ["캐릭터 소개문. 별도의 기능 제한 안내 없음"] },
+  };
+  const PV_PLATFORMS = ["멜로이", "루모"], PV_KINDS = ["상태창", "소개문"];
+  const PV_WIDTHS = [["380", "모바일 380"], ["768", "태블릿 768"], ["full", "PC 전체 폭"]];
+  // 루모 채팅방 색 변수(hsl 값)를 비슷하게 채워 둡니다. 실제 색은 플랫폼 테마에 따라 다릅니다.
+  const PV_THEME = {
+    light: { bg: "#ffffff", ink: "#1f2328", text: "220 9% 30%", dialogue: "220 13% 10%", box: "220 14% 96%" },
+    dark: { bg: "#17191c", ink: "#e6e8eb", text: "220 9% 72%", dialogue: "220 13% 94%", box: "220 9% 16%" },
+  };
+  const PV_VAR = /\{\{\s*([^{}\n]+?)\s*\}\}/g, PV_USER = /\{\{\s*user\s*\}\}/gi;
+  const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  const PV = (() => {
+    const s = store.get(PREVIEW_KEY) || {};
+    return { slot: own(PV_SLOTS, s.slot) ? s.slot : "멜로이:상태창", width: PV_WIDTHS.some(([w]) => w === s.width) ? s.width : "380",
+             bg: s.bg === "dark" ? "dark" : "light", subst: s.subst !== false, scripts: s.scripts === true,
+             slots: s.slots && typeof s.slots === "object" ? s.slots : {}, saveOk: true };
+  })();
+  function pvData(id) {
+    let d = PV.slots[id];
+    if (!d || typeof d !== "object") d = PV.slots[id] = {};
+    if (typeof d.html !== "string") d.html = "";
+    if (!d.vars || typeof d.vars !== "object") d.vars = {};
+    return d;
+  }
+  function pvSave() {
+    PV.saveOk = store.set(PREVIEW_KEY, { slot: PV.slot, width: PV.width, bg: PV.bg, subst: PV.subst, scripts: PV.scripts, slots: PV.slots });
+  }
+  function pvVars(html) {
+    const found = new Map();
+    for (const m of html.matchAll(PV_VAR)) found.set(m[1], (found.get(m[1]) || 0) + 1);
+    return found;
+  }
+  /** 미리보기에만 쓰는 문서. 입력은 그대로 두고, 조각 HTML이면 최소 뼈대로 감쌉니다. */
+  function pvDocument(d) {
+    const html = PV.subst ? d.html.replace(PV_VAR, (all, name) => (own(d.vars, name) && d.vars[name] ? d.vars[name] : all)) : d.html;
+    if (/^\s*(?:<!--[\s\S]*?-->\s*)*(?:<!doctype|<html[\s>])/i.test(html)) return html;
+    const t = PV_THEME[PV.bg];
+    return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">`
+      + `<style>:root{color-scheme:${PV.bg};--chat-message-text:${t.text};--chat-dialogue-text:${t.dialogue};--chat-message-box-background:${t.box}}`
+      + `html,body{margin:0}body{padding:12px;background:${t.bg};color:${t.ink};`
+      + `font:15px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif}</style>`
+      + `</head><body>${html}</body></html>`;
+  }
+  function pvSetHtml(id, text) {
+    pvData(id).html = text; pvSave();
+    if (S.view.kind === "preview" && PV.slot === id) renderEditor();
+  }
+
+  function renderPreview(ed) {
+    const id = PV.slot, rule = PV_SLOTS[id], d = pvData(id);
+    const [platform, kind] = id.split(":");
+    const pick = (patch) => { Object.assign(PV, patch); pvSave(); renderEditor(); };
+    const seg = (label, options, cur, onPick) => h("div", { class: "seg", role: "group", "aria-label": label },
+      ...options.map(([v, text]) => h("button", { type: "button", "aria-pressed": String(v === cur), text, onclick: () => onPick(v) })));
+    let timer = null;
+    const later = () => { clearTimeout(timer); timer = setTimeout(() => { frame.srcdoc = pvDocument(d); pvSave(); saveNote(); }, 300); };
+
+    // 입력 칸
+    const ta = h("textarea", { class: "pv-input", id: "pv-input", spellcheck: false, autocapitalize: "off", autocomplete: "off", autocorrect: "off",
+      "aria-label": `${platform} ${kind} HTML`, placeholder: "여기에 HTML을 붙여넣으세요. <html>·<body> 없는 조각이어도 됩니다." });
+    ta.value = d.html;
+    ta.addEventListener("input", () => { d.html = ta.value; updCount(); renderVars(); later(); });
+
+    // 글자 수 (다른 칸과 같은 UTF-16 · 공백 포함 기준)
+    const meter = h("div", { class: "meter pv-meter" }), msgs = h("div", { class: "pv-col" });
+    const updCount = () => {
+      const n = E.countChars(d.html, true), [rec, recName] = E.recommendedLine({ "최대": rule.max }, S.rules.config);
+      const state = n > rule.max ? "fail" : n > rec ? "warn" : "";
+      meter.className = `meter pv-meter ${state}`;
+      meter.replaceChildren(
+        h("div", { class: "meter-label" }, h("span", { text: `글자 수 (최대 ${fmt(rule.max)}자 · ${recName} ${fmt(rec)}자)` }),
+          h("span", { class: "tnum" }, h("b", { text: fmt(n) }), h("small", { text: ` / ${fmt(rule.max)} · ${Math.round((n / rule.max) * 100)}%` }))),
+        h("div", { class: "meter-track", role: "meter", "aria-label": "글자 수", "aria-valuemin": "0", "aria-valuemax": String(rule.max), "aria-valuenow": String(n) },
+          h("div", { class: "meter-fill", style: `width:${Math.min(100, (n / rule.max) * 100)}%` }),
+          h("div", { class: "pv-mark", style: `left:${(rec / rule.max) * 100}%`, title: `${recName} ${fmt(rec)}자` })));
+      const lines = [];
+      if (n > rule.max) lines.push(["fail", `✕ 최대 ${fmt(rule.max)}자를 넘었습니다 (+${fmt(n - rule.max)}자)`]);
+      else if (n > rec) lines.push(["warn", `▲ ${recName}선 ${fmt(rec)}자를 넘었습니다 (+${fmt(n - rec)}자)`]);
+      const users = rule.noUser ? [...d.html.matchAll(PV_USER)].length : 0;
+      if (users) lines.push(["fail", `✕ ${platform} ${kind}에는 {{user}}를 쓸 수 없습니다 (${users}곳) — '유저'로 써 주세요.`]);
+      msgs.replaceChildren(...lines.map(([st, text]) => h("p", { class: `pv-msg ${st}`, text })));
+    };
+
+    // 변수 치환: {{...}} 를 찾아 임시 값을 넣음 (미리보기에만 반영)
+    const varList = h("div", { class: "pv-vars" });
+    const renderVars = () => {
+      const found = pvVars(d.html);
+      if (!found.size) { varList.replaceChildren(h("p", { class: "muted", text: "{{user}}, {{char}} 같은 변수가 없습니다." })); return; }
+      varList.replaceChildren(...[...found].map(([name, count]) => {
+        const inp = h("input", { class: "input", id: `pv-var-${encodeURIComponent(name)}`, value: own(d.vars, name) ? d.vars[name] : "",
+          placeholder: "비우면 그대로 표시", "aria-label": `{{${name}}} 값`, autocapitalize: "off", autocomplete: "off",
+          oninput: () => { d.vars[name] = inp.value; later(); } });
+        return h("label", { class: "pv-var" }, h("code", {}, `{{${name}}}`, h("small", { text: `×${count}` })), inp);
+      }));
+    };
+
+    // 붙여넣기 · 지우기
+    const pasteBtn = h("button", { class: "btn primary", type: "button", text: "붙여넣기", onclick: async () => {
+      let text = null;
+      try { text = await navigator.clipboard.readText(); } catch { text = null; }
+      if (text == null) { ta.focus(); toast("자동 붙여넣기가 막혀 있습니다. 칸을 길게 눌러 붙여넣어 주세요."); return; }
+      if (!text.trim()) { toast("클립보드가 비어 있습니다."); return; }
+      const prev = d.html;
+      pvSetHtml(id, text);
+      toast("붙여넣었습니다.", prev.trim() ? { label: "되돌리기", run: () => pvSetHtml(id, prev) } : null);
+    } });
+    const clearBtn = h("button", { class: "btn quiet", type: "button", text: "지우기", onclick: () => {
+      const prev = d.html;
+      if (!prev) return;
+      pvSetHtml(id, "");
+      toast("지웠습니다.", { label: "되돌리기", run: () => pvSetHtml(id, prev) });
+    } });
+
+    // 규정 안내
+    const ruleBox = h("details", { class: "guide pv-rule" }, h("summary", { text: `${platform} ${kind} 규정 보기` }),
+      h("ul", {}, ...rule.notes.map((n) => h("li", { text: n }))),
+      ...(rule.tags ? Object.entries(LUMO_TAGS).flatMap(([title, rows]) => [h("p", { class: "muted", text: title }),
+        ...rows.map(([group, tags]) => h("div", { class: "chips" }, h("span", { class: "muted", text: group }), ...tags.split(" ").map((t) => h("span", { class: "chip", text: t }))))]) : []));
+
+    // 미리보기
+    const frame = h("iframe", { class: "pv-frame", title: `${platform} ${kind} 미리보기`, sandbox: PV.scripts ? "allow-scripts" : "", referrerpolicy: "no-referrer" });
+    frame.style.width = PV.width === "full" ? "100%" : `${PV.width}px`;
+    frame.srcdoc = pvDocument(d);
+    const saveLine = h("p", { class: "muted" });
+    const saveNote = () => { saveLine.textContent = PV.saveOk ? "입력 내용과 변수 값은 이 기기에 자동 저장됩니다." : "이 기기에 저장할 수 없어, 새로고침하면 입력 내용이 지워집니다."; };
+
+    const substBox = h("input", { type: "checkbox", id: "pv-subst", checked: PV.subst, onchange: () => { PV.subst = substBox.checked; later(); } });
+    const scriptBox = h("input", { type: "checkbox", id: "pv-scripts", checked: PV.scripts, onchange: () => pick({ scripts: scriptBox.checked }) });
+
+    updCount(); renderVars(); saveNote();
+    ed.replaceChildren(
+      h("div", { class: "ed-head" }, h("span", { class: "ed-crumb", text: "HTML 미리보기" }), h("h2", { class: "ed-title", text: `${platform} ${kind}` })),
+      h("div", { class: "seg-row" },
+        seg("플랫폼", PV_PLATFORMS.map((p) => [p, p]), platform, (p) => pick({ slot: `${p}:${kind}` })),
+        seg("종류", PV_KINDS.map((k) => [k, k]), kind, (k) => pick({ slot: `${platform}:${k}` }))),
+      h("div", { class: "pv" },
+        h("div", { class: "pv-col pv-edit" },
+          ruleBox, ta,
+          h("div", { class: "quick" }, pasteBtn, clearBtn),
+          meter, msgs,
+          h("div", { class: "seg-row" }, h("h3", { class: "group-title", text: "변수 치환" }),
+            h("label", { class: "check" }, substBox, "미리보기에 치환 적용")),
+          varList, saveLine),
+        h("div", { class: "pv-col pv-view" },
+          h("div", { class: "seg-row" },
+            seg("미리보기 폭", PV_WIDTHS, PV.width, (w) => pick({ width: w })),
+            seg("배경", [["light", "밝게"], ["dark", "어둡게"]], PV.bg, (b) => pick({ bg: b }))),
+          h("div", { class: "pv-stage" }, frame),
+          h("label", { class: "check" }, scriptBox, "스크립트 실행 허용 (보통은 끔)"))));
   }
 
   // ── 시작 ──
