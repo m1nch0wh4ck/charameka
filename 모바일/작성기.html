@@ -46,6 +46,19 @@ button { cursor: pointer; }
 @media (min-width: 900px) { .shell { grid-template-columns: 320px minmax(0, 1fr); align-items: start; }
   .nav { position: sticky; top: 72px; max-height: calc(100vh - 170px); overflow: auto; } }
 @media (max-width: 899px) { body[data-view="home"] .editor, body:not([data-view="home"]) .nav { display: none; } }
+body[data-view="start"] .nav, body[data-view="start"] .meter-bar, body[data-view="start"] #issues-btn { display: none !important; }
+body[data-view="start"] .shell { grid-template-columns: minmax(0, 1fr); max-width: 560px; padding-bottom: 40px; }
+
+/* 시작 화면: 할 일을 먼저 고름 */
+.start { display: grid; gap: 14px; padding-top: 6px; }
+.start-lead { margin: 0; color: var(--muted); font-size: 14px; }
+.start-card { display: grid; gap: 4px; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+.start-card.accent { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.start-card b { font: 700 19px/1.3 var(--font-display); }
+.start-card .sub { color: var(--muted); font-size: 13.5px; }
+.start-card .tnum { color: var(--muted); margin-top: 4px; }
+.start-card.accent .tnum { color: var(--accent); }
+.start-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
 
 /* 목차 */
 .draft { display: grid; gap: 6px; padding-block: 4px 10px; }
@@ -160,17 +173,6 @@ body.typing .meter-bar { display: none; }
 @media (prefers-reduced-motion: reduce) { .meter-fill { transition: none; } }
 
 /* HTML 미리보기: 휴대폰은 입력 → 미리보기 세로로, 넓은 화면은 입력 | 미리보기 두 칸. 목차·계기판·점검은 숨김 */
-.pv-home { margin-top: 14px; background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
-  border-radius: var(--radius); padding: 14px; display: grid; gap: 10px; }
-.pv-home-head { display: flex; align-items: center; gap: 8px; }
-.pv-home-badge { font: 600 11px var(--font-data); letter-spacing: 0.06em; background: var(--accent); color: var(--accent-ink); border-radius: 6px; padding: 2px 7px; }
-.pv-home-title { margin: 0; font: 700 18px/1.3 var(--font-display); }
-.pv-home-desc { margin: 0; font-size: 13.5px; color: var(--muted); }
-.pv-home-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.pv-slot { display: grid; gap: 1px; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
-.pv-slot-name { font-size: 13.5px; font-weight: 600; }
-.pv-slot .tnum { color: var(--muted); font-size: 11.5px; }
-.pv-slot.warn .tnum { color: var(--warn); } .pv-slot.fail .tnum { color: var(--fail); }
 body[data-view="preview"] .nav, body[data-view="preview"] .meter-bar, body[data-view="preview"] #issues-btn { display: none !important; }
 body[data-view="preview"] .shell { grid-template-columns: minmax(0, 1fr); max-width: 1600px; }
 body[data-view="preview"] .topbar-inner { max-width: 1600px; }
@@ -1324,7 +1326,6 @@ if (typeof module !== "undefined") module.exports = Engine;
         h("button", { class: "btn", type: "button", onclick: () => $("file-source").click(), text: "파일 불러오기" }),
         h("button", { class: "btn", type: "button", onclick: openExport, text: "내보내기" })),
       sizeBox(),
-      previewBox(),
     ];
     for (const p of S.schema.parts) {
       const list = h("ul", { class: "items" });
@@ -1412,6 +1413,7 @@ if (typeof module !== "undefined") module.exports = Engine;
   function renderEditor() {
     const ed = $("editor");
     const v = S.view;
+    if (v.kind === "start") { renderStart(ed); return; }
     if (v.kind === "preview") { renderPreview(ed); return; }
     if (v.kind === "home") {
       ed.replaceChildren(h("div", { class: "ed-head" },
@@ -1586,15 +1588,45 @@ if (typeof module !== "undefined") module.exports = Engine;
     btn.textContent = fails ? `점검 ✕${fails} ▲${warns}` : warns ? `점검 ▲${warns}` : "점검 ✓";
   }
 
+  // ── 화면: 시작 ──
+  function renderStart(ed) {
+    const name = charName();
+    const cfg = S.rules.config;
+    let line = `${S.mode} 모드`;
+    if (cfg["합계_제한"] && typeof cfg["합계_제한"] === "object") {
+      const total = E.checkTotalLength(E.parseMdSections(S.text), cfg)[0];
+      line += ` · 설정 크기 ${fmt(total.total)} / ${fmt(total.maximum)}자`;
+    }
+    const fails = S.issues.filter((i) => i.status === E.FAIL).length;
+    if (fails) line += ` · 고칠 곳 ${fails}개`;
+    const filled = Object.keys(PV_SLOTS).filter((id) => pvData(id).html.trim());
+    ed.replaceChildren(h("div", { class: "start" },
+      h("p", { class: "start-lead", text: "무엇을 하시겠어요?" }),
+      h("button", { class: "start-card accent", type: "button", onclick: () => go({ kind: "home" }) },
+        h("b", { text: "캐릭터 작성" }),
+        h("span", { class: "sub", text: "템플릿 칸에 자연어로 채우고, 쓰는 동안 바로 점검합니다." }),
+        h("span", { class: "tnum", text: (name || (cardParts().length ? "이름 없는 작품" : "이름 없는 캐릭터")) + " · " + line })),
+      h("button", { class: "start-card", type: "button", onclick: () => go({ kind: "preview" }) },
+        h("b", { text: "HTML 미리보기" }),
+        h("span", { class: "sub", text: "상태창·소개문 HTML을 붙여넣어 폭·배경·변수를 바꿔 보고, 막히는 태그를 확인합니다." }),
+        h("span", { class: "tnum", text: filled.length ? `쓰는 중인 칸 ${filled.length}개 · ${filled.map((id) => id.replace(":", " ")).join(", ")}` : "멜로이 · 루모 / 상태창 · 소개문" })),
+      h("div", { class: "start-foot" },
+        h("button", { class: "mode-pill", type: "button", onclick: openModes, text: `${S.mode} 모드 · 바꾸기` }),
+        h("span", { class: "muted", text: S.saveOk ? (S.savedAt ? `이 기기에 자동 저장됨 · ${hhmm(S.savedAt)}` : "이 기기에 자동 저장됩니다")
+          : "자동 저장이 막혀 있습니다. 내보내기로 따로 보관하세요." }))));
+  }
+
   // ── 이동 ──
   function go(t) {
     S.view = t;
     S.onRecompute = null;
-    document.body.dataset.view = t.kind === "home" || t.kind === "preview" ? t.kind : "edit";
-    $("back-btn").hidden = t.kind === "home";
+    document.body.dataset.view = ["start", "home", "preview"].includes(t.kind) ? t.kind : "edit";
+    const back = $("back-btn");
+    back.hidden = t.kind === "start";
+    back.textContent = t.kind === "home" || t.kind === "preview" ? "‹ 처음으로" : "‹ 목차";
     const label = t.kind === "preview" ? "HTML 미리보기" : t.kind === "field" ? S.schema.parts.flatMap((p) => p.fields).find((f) => f.key === t.key)?.label
       : t.kind === "card" ? E.cardLabel(findCard(t) || { name: "" }) : t.part;
-    $("top-title").replaceChildren(t.kind === "home" ? "MELLOY 캐릭터 작성기" : label || "");
+    $("top-title").replaceChildren(t.kind === "start" ? "MELLOY 캐릭터 작성기" : t.kind === "home" ? "캐릭터 작성" : label || "");
     renderNav(); renderEditor(); renderMeters();
     window.scrollTo({ top: 0 });
   }
@@ -1618,20 +1650,32 @@ if (typeof module !== "undefined") module.exports = Engine;
     toastTimer = setTimeout(() => t.remove(), action ? 7000 : 2600);
   }
 
+  /** 메뉴는 지금 화면에 필요한 것만 보여 줍니다. (화면에 버튼이 이미 있는 것은 넣지 않음) */
   function openMenu() {
-    const s = sheet(h("h2", { text: "메뉴" }), h("div", { class: "menu-list" },
-      menuItem("원자료 붙여넣기", "AI 어시스턴트가 쓴 원자료를 붙여넣어 칸에 채웁니다.", () => { s.close(); openPaste(); }),
-      menuItem("원자료·변환 파일 불러오기", "휴대폰에 저장된 .txt / .md 파일을 엽니다.", () => { s.close(); $("file-source").click(); }),
-      menuItem("내보내기", "변환 파일로 저장하거나 전체를 복사합니다.", () => { s.close(); openExport(); }),
-      menuItem("HTML 미리보기", "상태창·소개문 HTML을 붙여넣어 폭·배경·변수 값을 바꿔 가며 봅니다.", () => { s.close(); go({ kind: "preview" }); }),
-      menuItem("원자료 양식 받기", "제목에 '#' 이 없는 자연어 양식입니다. AI 어시스턴트에게 주고 이 순서대로 써 달라고 하세요.", () => { s.close(); openSourceForm(); }),
-      h("div", { class: "menu-sep" }),
-      menuItem("새로 작성", "템플릿 안내 문구가 들어 있는 빈 양식으로 시작합니다.", () => { s.close(); confirmSheet("새로 작성할까요?", "지금 내용은 '직전 작업 되살리기'로 한 번 되돌릴 수 있습니다.", "새로 작성", () => replaceForm(E.defaultForm(S.schema), null, "새 양식으로 시작했습니다.")); }),
-      menuItem("직전 작업 되살리기", "붙여넣기·불러오기·새로 작성 바로 전 내용으로 돌아갑니다.", () => { s.close(); restoreBackup(); }),
-      menuItem("모드 바꾸기", `지금 ${S.mode} 모드입니다. 모드마다 작업이 따로 저장됩니다.`, () => { s.close(); openModes(); }),
-      menuItem("규칙 바꾸기", S.rules.custom ? "지금은 내가 바꾼 규칙을 쓰고 있습니다." : "PC판 rules 폴더의 템플릿.md / 검수설정.json 을 넣을 수 있습니다.", () => { s.close(); openRules(); })),
+    const list = h("div", { class: "menu-list" });
+    const items = { push: (...kids) => list.append(...kids), unshift: (kid) => list.prepend(kid) };
+    const s = sheet(h("h2", { text: "메뉴" }), list,
       h("p", { class: "muted", text: "개인이 만든 작성 도구입니다. 작성 내용은 이 기기의 브라우저에만 저장되고 어디에도 보내지 않습니다." }),
       h("button", { class: "btn", type: "button", text: "닫기", onclick: () => s.close() }));
+    if (S.view.kind === "preview") {
+      const id = PV.slot, [platform, kind] = id.split(":");
+      items.push(
+        menuItem("캐릭터 작성으로", "지금 쓰던 미리보기 내용은 그대로 남습니다.", () => { s.close(); go({ kind: "home" }); }),
+        menuItem(`'${platform} ${kind}' 칸 지우기`, pvData(id).html.trim() ? "지운 뒤 되돌릴 수 있습니다." : "이미 비어 있습니다.", () => {
+          s.close();
+          const prev = pvData(id).html;
+          if (!prev.trim()) { toast("이미 비어 있습니다."); return; }
+          pvSetHtml(id, "");
+          toast("지웠습니다.", { label: "되돌리기", run: () => pvSetHtml(id, prev) });
+        }));
+      return;
+    }
+    items.push(
+      menuItem("원자료 양식 받기", "제목에 '#' 이 없는 자연어 양식입니다. AI 어시스턴트에게 주고 이 순서대로 써 달라고 하세요.", () => { s.close(); openSourceForm(); }),
+      menuItem("새로 작성", "템플릿 안내 문구가 들어 있는 빈 양식으로 시작합니다.", () => { s.close(); confirmSheet("새로 작성할까요?", "지금 내용은 '직전 작업 되살리기'로 한 번 되돌릴 수 있습니다.", "새로 작성", () => replaceForm(E.defaultForm(S.schema), null, "새 양식으로 시작했습니다.")); }),
+      menuItem("직전 작업 되살리기", "붙여넣기·불러오기·새로 작성 바로 전 내용으로 돌아갑니다.", () => { s.close(); restoreBackup(); }),
+      menuItem("규칙 바꾸기", S.rules.custom ? "지금은 내가 바꾼 규칙을 쓰고 있습니다." : "PC판 rules 폴더의 템플릿.md / 검수설정.json 을 넣을 수 있습니다.", () => { s.close(); openRules(); }));
+    if (S.view.kind === "start") items.unshift(menuItem("모드 바꾸기", `지금 ${S.mode} 모드입니다. 모드마다 작업이 따로 저장됩니다.`, () => { s.close(); openModes(); }));
   }
   function openModes() {
     const desc = { "1인": "캐릭터 한 명. 등장인물 0. Core ~ 7. 칸 구성", "다인": "다인챗. 설명 필드 9칸 + 인물별 카드 여러 장" };
@@ -1946,20 +1990,6 @@ if (typeof module !== "undefined") module.exports = Engine;
     return { n, rec, state: n > rule.max ? "fail" : n > rec ? "warn" : "" };
   }
 
-  // 목차 화면의 미리보기 섹션
-  function previewBox() {
-    return h("section", { class: "pv-home", "aria-label": "HTML 미리보기" },
-      h("div", { class: "pv-home-head" }, h("span", { class: "pv-home-badge", text: "HTML" }), h("h2", { class: "pv-home-title", text: "상태창·소개문 미리보기" })),
-      h("p", { class: "pv-home-desc", text: "멜로이·루모 HTML을 붙여넣어 폭·배경·변수 값을 바꿔 보고, 플랫폼에서 막히는 태그를 확인합니다." }),
-      h("div", { class: "pv-home-slots" }, ...Object.keys(PV_SLOTS).map((id) => {
-        const { n, state } = pvCount(id);
-        return h("button", { class: `pv-slot ${state}`, type: "button", onclick: () => { PV.slot = id; pvSave(); go({ kind: "preview" }); } },
-          h("span", { class: "pv-slot-name", text: id.replace(":", " ") }),
-          h("span", { class: "tnum", text: n ? `${fmt(n)} / ${fmt(PV_SLOTS[id].max)}` : `비어 있음 · 최대 ${fmt(PV_SLOTS[id].max)}` }));
-      })),
-      h("button", { class: "btn primary", type: "button", onclick: () => go({ kind: "preview" }), text: "HTML 미리보기 열기" }));
-  }
-
   function renderPreview(ed) {
     const id = PV.slot, rule = PV_SLOTS[id], d = pvData(id);
     const [platform, kind] = id.split(":");
@@ -2083,7 +2113,7 @@ if (typeof module !== "undefined") module.exports = Engine;
 
   // ── 시작 ──
   $("menu-btn").addEventListener("click", openMenu);
-  $("back-btn").addEventListener("click", () => go({ kind: "home" }));
+  $("back-btn").addEventListener("click", () => go({ kind: S.view.kind === "home" || S.view.kind === "preview" ? "start" : "home" }));
   $("issues-btn").addEventListener("click", openIssues);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("layer").replaceChildren(); });
   // 휴대폰 키보드가 화면을 가리고 있을 때만 아래 계기판을 잠시 숨깁니다
@@ -2107,6 +2137,6 @@ if (typeof module !== "undefined") module.exports = Engine;
   }
   loadDraft();
   recompute();
-  go({ kind: "home" });
+  go({ kind: "start" });
 })();
 </script>
