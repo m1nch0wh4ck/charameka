@@ -2,11 +2,14 @@
 """모바일/작성기.html 로 웹 배포용 폴더(모바일/웹배포)를 만듭니다.
 
 같은 작성기.html 로 주소 두 개를 만듭니다. (코드는 한 파일, 앱만 둘)
-  모바일/웹배포/        → 캐릭터 작성기   https://m1nch0wh4ck.github.io/charameka/
+  모바일/웹배포/writer/ → 경량봇 작성기   https://m1nch0wh4ck.github.io/charameka/writer/
   모바일/웹배포/html/   → HTML 미리보기   https://m1nch0wh4ck.github.io/charameka/html/
-각각 따로 앱으로 설치되고 아이콘·이름이 다릅니다. 저장 내용은 같은 주소(origin)를 쓰므로 양쪽에서 이어집니다.
+  모바일/웹배포/        → writer/ 로 넘겨 주는 안내 페이지 + 예전 앱의 서비스워커를 지우는 sw.js
+두 앱은 서로 겹치지 않는 형제 주소라 안드로이드 크롬에서도 각각 설치됩니다.
+(예전에는 작성기가 /charameka/ 전체를 범위로 잡아 /charameka/html/ 이 그 안에 들어가, 안드로이드에서 미리보기를 따로 설치할 수 없었습니다.)
+저장 내용은 같은 주소(origin)를 쓰므로 양쪽에서 이어집니다.
 
-만들어지는 파일: index.html, manifest.webmanifest, sw.js, .nojekyll, README.md + html/ 아래 3개
+만들어지는 파일: writer/·html/ 아래 index.html·manifest.webmanifest·sw.js, 루트의 index.html·sw.js·.nojekyll·README.md
 (아이콘 PNG 는 이 폴더에 미리 들어 있습니다.)
 만든 뒤 main 에 올리면 GitHub Actions(.github/workflows/pages.yml)가 모바일/웹배포 를 자동으로 배포합니다.
 (작성 내용 저장 키 'melloy-writer:*' 는 기존 기기 데이터를 잇기 위해 그대로 둡니다.)
@@ -18,21 +21,21 @@ from pathlib import Path
 
 SRC = Path("모바일/작성기.html")
 OUT = Path("모바일/웹배포")
-VERSION = "9"  # 내용이 바뀌면 올려서 휴대폰의 옛 캐시를 비웁니다
+VERSION = "10"  # 내용이 바뀌면 올려서 휴대폰의 옛 캐시를 비웁니다
 
 # 앱마다 다른 것 (아이콘은 작성기가 루트, 미리보기가 html/ 에서 '../' 로 가져다 씁니다)
 APPS = {
     "writer": {
-        "dir": "",
+        "dir": "writer",
         "app": "writer",
         "title": "경량봇 작성기",
         "short": "경량봇 작성기",
         "apple": "경량봇 작성기",
         "desc": "경량 코어 시트(자연어 원자료)를 칸에 채워 멜로이 변환 파일과 크랙용 묶음을 만드는 작성 도구",
         "theme": "#0d6b63",
-        "id": "/charameka/",
+        "id": "/charameka/writer/",
         "icon": "",
-        "cache": "charameka-writer",
+        "cache": "charameka-lite-writer",
     },
     "html": {
         "dir": "html",
@@ -132,13 +135,12 @@ README = """# 경량봇 작성기 (모바일)
 
 | 주소 | 앱 | 하는 일 |
 |---|---|---|
-| `/charameka/` | 경량봇 작성기 | 템플릿 칸 작성·실시간 점검·내보내기 |
+| `/charameka/writer/` | 경량봇 작성기 | 경량 코어 시트 칸 작성·실시간 점검·멜로이 변환 파일·크랙용 묶음 |
 | `/charameka/html/` | HTML 미리보기 | 상태창·소개문 HTML 확인 |
 
 서로 메뉴에서 한 번에 넘어갈 수 있고, 저장 내용은 각자 따로 보관됩니다.
 
-- 템플릿 칸에 자연어로 채우면 템플릿 양식의 변환 파일(.md)을 만들어 줍니다.
-- 1인 / 다인(다인챗) 모드를 고를 수 있습니다. 다인 모드는 인물별 카드를 여러 장 쓰고, 모드마다 작업이 따로 저장됩니다.
+- 경량 코어 시트(자연어 원자료)를 붙여넣으면 칸이 채워지고, 멜로이 변환 파일(.md)과 크랙용 묶음을 만들어 줍니다.
 - 등장인물·설명·합계 글자 수, 변수 200자, `{{user}}` 위치 등을 쓰는 동안 바로 점검합니다.
 - **HTML 미리보기**: 멜로이·루모의 상태창·소개문 HTML을 붙여넣어 폭(380 / 768 / 전체)·배경(밝게 / 어둡게)을 바꿔 보고, `{{user}}` 같은 변수에 임시 값을 넣어 확인합니다. 플랫폼 규정상 막히는 태그도 찾아 줍니다.
 - 작성 내용은 각자 기기의 브라우저에만 저장되고, 어디에도 전송되지 않습니다.
@@ -163,6 +165,34 @@ def embed_rules(page):
     return RULES_TAG.sub(lambda m: m.group(1) + text + m.group(3), page, count=1)
 
 
+# 예전 앱(/charameka/ 범위)을 정리하는 서비스워커. 이미 설치된 기기에서 예전 캐시를 지우고 스스로 등록을 풉니다.
+ROOT_SW = """self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (e) => e.waitUntil((async () => {
+  for (const k of await caches.keys()) if (k.startsWith("charameka-writer-")) await caches.delete(k);
+  await self.registration.unregister();
+  for (const c of await self.clients.matchAll({ type: "window" })) c.navigate(c.url);
+})()));
+"""
+
+ROOT_INDEX = """<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>경량봇 작성기로 이동</title>
+<meta http-equiv="refresh" content="0; url=./writer/">
+<style>body{font:16px/1.6 system-ui,sans-serif;margin:0;padding:32px 20px;background:#f2f5f4;color:#14201d}a{color:#0d6b63}</style>
+</head>
+<body>
+<p>작성기 주소가 바뀌었습니다.</p>
+<p><a href="./writer/">경량봇 작성기</a> · <a href="./html/">HTML 미리보기</a></p>
+<p>예전에 이 주소로 앱을 설치했다면, 지우고 새 주소에서 다시 설치해 주세요. 기기에 저장된 작업은 그대로 남습니다.</p>
+<script>location.replace("./writer/");</script>
+</body>
+</html>
+"""
+
+
 def main():
     page = embed_rules(SRC.read_text(encoding="utf-8"))
     SRC.write_text(page, encoding="utf-8")  # 원본에도 같은 규칙을 넣어 두어, 파일을 바로 열어도 같게 동작합니다
@@ -172,9 +202,14 @@ def main():
         (d / "index.html").write_text(head(a) + page + "\n</body>\n</html>\n", encoding="utf-8")
         (d / "manifest.webmanifest").write_text(json.dumps(manifest(a), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         (d / "sw.js").write_text(sw(a), encoding="utf-8")
+    (OUT / "index.html").write_text(ROOT_INDEX, encoding="utf-8")
+    (OUT / "sw.js").write_text(ROOT_SW, encoding="utf-8")
+    old = OUT / "manifest.webmanifest"  # 루트는 더 이상 앱이 아니므로 설치 정보를 두지 않습니다
+    if old.exists():
+        old.unlink()
     (OUT / ".nojekyll").write_text("", encoding="utf-8")
     (OUT / "README.md").write_text(README, encoding="utf-8")
-    print(f"{OUT} 에 웹 배포 파일을 만들었습니다. (작성기: ./  ·  HTML 미리보기: ./html/)")
+    print(f"{OUT} 에 웹 배포 파일을 만들었습니다. (작성기: ./writer/  ·  HTML 미리보기: ./html/)")
 
 
 if __name__ == "__main__":

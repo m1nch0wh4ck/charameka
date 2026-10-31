@@ -240,7 +240,7 @@ const Engine = (() => {
   const CARD_HEAD = /^\s*■\s*(캐릭터|주연|조연)\s*[:：]\s*(.*)$/;
   const BULLETS = ["-", "·", "*", "•", "※", "+"];
   const SOURCE_FORM_NOTE = [
-    "※ MELLOY 원자료 양식입니다. '등장인물', '0. Core' 같은 제목 줄은 지우거나 고치지 말고, 각 제목 아래에 내용을 채워 주세요.",
+    "※ 경량 코어 시트(원자료) 양식입니다. '등장인물', '1. 클리셰 라벨' 같은 제목 줄은 지우거나 고치지 말고, 각 제목 아래에 내용을 채워 주세요.",
     "※ 괄호 ( ) 안 설명이나 'Age:' 처럼 비어 있는 칸은 실제 내용으로 바꿔 주세요.",
     "※ 변수와 로어북은 [변수 이름], [변수 내용], '1. 트리거:' 같은 표시를 그대로 두고 내용만 채워 주세요.",
   ];
@@ -1117,8 +1117,8 @@ if (typeof module !== "undefined") module.exports = Engine;
   const MODE_KEY = "melloy-writer:mode";
   // 배포본은 주소마다 앱이 다릅니다. ""(작성기.html 을 그냥 열었을 때)이면 시작 화면에서 둘 다 고를 수 있습니다.
   const APP = window.CHARAMEKA_APP === "html" || window.CHARAMEKA_APP === "writer" ? window.CHARAMEKA_APP : "";
-  const OTHER = APP === "html" ? { url: "../", label: "캐릭터 작성기 열기", sub: "템플릿 칸 작성·점검·내보내기" }
-    : APP === "writer" ? { url: "./html/", label: "HTML 미리보기 열기", sub: "상태창·소개문 HTML을 붙여넣어 확인합니다." } : null;
+  const OTHER = APP === "html" ? { url: "../writer/", label: "경량봇 작성기 열기", sub: "경량 코어 시트 칸 작성·점검·내보내기" }
+    : APP === "writer" ? { url: "../html/", label: "HTML 미리보기 열기", sub: "상태창·소개문 HTML을 붙여넣어 확인합니다." } : null;
   const firstView = () => ({ kind: APP === "html" ? "preview" : APP === "writer" ? "home" : "start" });
   // 1인 모드는 예전 저장 이름을 그대로 써서, 이미 쓰던 작업이 이어집니다.
   const modeKey = (base) => (S.mode === "1인" ? base : `${base}:${S.mode}`);

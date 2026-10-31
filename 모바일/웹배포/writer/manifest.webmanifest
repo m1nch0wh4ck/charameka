@@ -1,5 +1,5 @@
 {
-  "id": "/charameka/",
+  "id": "/charameka/writer/",
   "name": "경량봇 작성기",
   "short_name": "경량봇 작성기",
   "description": "경량 코어 시트(자연어 원자료)를 칸에 채워 멜로이 변환 파일과 크랙용 묶음을 만드는 작성 도구",
@@ -11,19 +11,19 @@
   "theme_color": "#0d6b63",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "../icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-512.png",
+      "src": "../icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-maskable-512.png",
+      "src": "../icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
