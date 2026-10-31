@@ -13,21 +13,22 @@
 실행: python 모바일/웹배포_만들기.py   (프로그램 폴더에서)
 """
 import json
+import re
 from pathlib import Path
 
 SRC = Path("모바일/작성기.html")
 OUT = Path("모바일/웹배포")
-VERSION = "8"  # 내용이 바뀌면 올려서 휴대폰의 옛 캐시를 비웁니다
+VERSION = "9"  # 내용이 바뀌면 올려서 휴대폰의 옛 캐시를 비웁니다
 
 # 앱마다 다른 것 (아이콘은 작성기가 루트, 미리보기가 html/ 에서 '../' 로 가져다 씁니다)
 APPS = {
     "writer": {
         "dir": "",
         "app": "writer",
-        "title": "MELLOY 캐릭터 작성기",
-        "short": "MELLOY 작성기",
-        "apple": "MELLOY 작성기",
-        "desc": "템플릿 칸에 자연어로 채우면 MELLOY 양식의 변환 파일을 만들어 주는 작성 도구",
+        "title": "경량봇 작성기",
+        "short": "경량봇 작성기",
+        "apple": "경량봇 작성기",
+        "desc": "경량 코어 시트(자연어 원자료)를 칸에 채워 멜로이 변환 파일과 크랙용 묶음을 만드는 작성 도구",
         "theme": "#0d6b63",
         "id": "/charameka/",
         "icon": "",
@@ -123,7 +124,7 @@ def sw(a):
             .replace("keys.filter((k) => k !== CACHE)", f'keys.filter((k) => k !== CACHE && k.startsWith("{a["cache"]}-"))'))
 
 
-README = """# MELLOY 캐릭터 작성기 (모바일)
+README = """# 경량봇 작성기 (모바일)
 
 휴대폰 브라우저에서 쓰는 캐릭터 설정 작성 도구입니다. 개인이 만든 도구이며 플랫폼 공식 도구가 아닙니다.
 
@@ -131,7 +132,7 @@ README = """# MELLOY 캐릭터 작성기 (모바일)
 
 | 주소 | 앱 | 하는 일 |
 |---|---|---|
-| `/charameka/` | MELLOY 캐릭터 작성기 | 템플릿 칸 작성·실시간 점검·내보내기 |
+| `/charameka/` | 경량봇 작성기 | 템플릿 칸 작성·실시간 점검·내보내기 |
 | `/charameka/html/` | HTML 미리보기 | 상태창·소개문 HTML 확인 |
 
 서로 메뉴에서 한 번에 넘어갈 수 있고, 저장 내용은 각자 따로 보관됩니다.
@@ -148,8 +149,23 @@ README = """# MELLOY 캐릭터 작성기 (모바일)
 """
 
 
+RULES = Path("rules/경량")  # 모바일 작성기는 경량봇 전용입니다. PC판의 1인·다인 규칙은 넣지 않습니다.
+RULES_TAG = re.compile(r'(<script type="application/json" id="rules-data">)(.*?)(</script>)', re.S)
+
+
+def embed_rules(page):
+    """rules/경량 의 템플릿·검수설정을 작성기.html 안의 기본 규칙으로 넣습니다."""
+    data = {"경량": {"template": (RULES / "템플릿.md").read_text(encoding="utf-8"),
+                     "config": json.loads((RULES / "검수설정.json").read_text(encoding="utf-8"))}}
+    text = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
+    if not RULES_TAG.search(page):
+        raise SystemExit("작성기.html 에서 rules-data 를 찾지 못했습니다.")
+    return RULES_TAG.sub(lambda m: m.group(1) + text + m.group(3), page, count=1)
+
+
 def main():
-    page = SRC.read_text(encoding="utf-8")
+    page = embed_rules(SRC.read_text(encoding="utf-8"))
+    SRC.write_text(page, encoding="utf-8")  # 원본에도 같은 규칙을 넣어 두어, 파일을 바로 열어도 같게 동작합니다
     for a in APPS.values():
         d = OUT / a["dir"] if a["dir"] else OUT
         d.mkdir(parents=True, exist_ok=True)

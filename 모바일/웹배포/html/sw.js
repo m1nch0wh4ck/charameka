@@ -1,4 +1,4 @@
-const CACHE = "charameka-html-v8";
+const CACHE = "charameka-html-v9";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "../icon-html-192.png", "../icon-html-512.png", "../icon-html-maskable-512.png", "../apple-touch-icon-html.png"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener("activate", (e) => {

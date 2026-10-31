@@ -1,8 +1,8 @@
 {
   "id": "/charameka/",
-  "name": "MELLOY 캐릭터 작성기",
-  "short_name": "MELLOY 작성기",
-  "description": "템플릿 칸에 자연어로 채우면 MELLOY 양식의 변환 파일을 만들어 주는 작성 도구",
+  "name": "경량봇 작성기",
+  "short_name": "경량봇 작성기",
+  "description": "경량 코어 시트(자연어 원자료)를 칸에 채워 멜로이 변환 파일과 크랙용 묶음을 만드는 작성 도구",
   "lang": "ko",
   "start_url": "./",
   "scope": "./",
